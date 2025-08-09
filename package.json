@@ -14,7 +14,13 @@
     "db:studio": "drizzle-kit studio",
     "build": "npm run build:client && npm run build:server",
     "build:client": "cd client && npm run build",
-    "build:server": "tsc -p server/tsconfig.json"
+    "build:server": "tsc -p server/tsconfig.json",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "test:ui": "vitest --ui",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@types/bcrypt": "^5.0.2",
@@ -22,6 +28,8 @@
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.5",
     "@types/node": "^20.11.5",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "cross-env": "^7.0.3",
@@ -33,12 +41,30 @@
     "jsonwebtoken": "^9.0.2",
     "postgres": "^3.4.3",
     "puppeteer": "^23.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.4.1",
+    "react-router-dom": "^6.20.1",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
     "vite-express": "^0.14.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.28.0"
+    "@testing-library/jest-dom": "^6.1.4",
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/user-event": "^14.5.1",
+    "@types/jest": "^29.5.8",
+    "@types/supertest": "^2.0.16",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "drizzle-kit": "^0.28.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "postcss": "^8.4.32",
+    "supertest": "^6.3.3",
+    "tailwindcss": "^3.4.0",
+    "ts-jest": "^29.1.1",
+    "vitest": "^1.0.0"
   }
 }

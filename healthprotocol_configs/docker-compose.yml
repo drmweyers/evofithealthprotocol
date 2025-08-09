@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: healthprotocol-postgres
+    restart: unless-stopped
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: healthprotocol_db
+    volumes:
+      - healthprotocol-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app-dev:
+    profiles: ["dev"]
+    build:
+      context: .
+      target: dev
+    container_name: healthprotocol-dev
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+      - "24679:24678"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/healthprotocol_db
+      PORT: 4001
+      NODE_ENV: development
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-here}
+      PDF_EXPORT_ENABLED: true
+    volumes:
+      - ./client:/app/client
+      - ./server:/app/server
+      - ./drizzle.config.ts:/app/drizzle.config.ts
+      - /app/node_modules
+      - ./package.json:/app/package.json
+      - ./tsconfig.json:/app/tsconfig.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "npm run db:push && npm run dev"
+
+  app-prod:
+    profiles: ["prod"]
+    build:
+      context: .
+      target: prod
+    container_name: healthprotocol-prod
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      PORT: 4001
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET}
+      PDF_EXPORT_ENABLED: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  healthprotocol-postgres-data:

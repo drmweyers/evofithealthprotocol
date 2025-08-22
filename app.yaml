@@ -1,0 +1,34 @@
+# Digital Ocean App Platform Configuration
+name: evofithealthprotocol
+services:
+- name: web
+  source_dir: /
+  github:
+    repo: drmweyers/evofithealthprotocol
+    branch: main
+  run_command: npm start
+  build_command: npm run build
+  environment_slug: node-js
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  http_port: 3500
+  routes:
+  - path: /
+  health_check:
+    http_path: /health
+  envs:
+  - key: NODE_ENV
+    value: production
+  - key: PORT
+    value: "3500"
+  - key: DATABASE_URL
+    value: "postgresql://username:password@host:port/database"
+    type: SECRET
+  - key: JWT_SECRET
+    value: "your-production-jwt-secret-32-chars-minimum"
+    type: SECRET
+databases:
+- name: evofithealthprotocol-db
+  engine: PG
+  version: "14"
+  size: basic

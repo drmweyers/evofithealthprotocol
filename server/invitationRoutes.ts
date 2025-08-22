@@ -104,7 +104,7 @@ invitationRouter.post('/send', requireAuth, requireRole('trainer'), async (req: 
 
     // Send email notification
     // Determine the correct base URL based on environment
-    let baseUrl = 'http://localhost:4000';
+    let baseUrl = 'http://localhost:3500';
     if (process.env.NODE_ENV === 'production') {
       baseUrl = 'https://evofitmeals.com';
     } else if (process.env.FRONTEND_URL) {

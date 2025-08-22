@@ -2,76 +2,43 @@ import React, { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
 import { Card, CardContent } from "./ui/card";
-import type { Recipe } from "@shared/schema";
-import RecipeDetailModal from "./RecipeDetailModal";
+import type { User } from "@shared/schema";
 
 interface AdminTableProps {
-  recipes: Recipe[];
+  users: User[];
   isLoading: boolean;
-  onApprove: (id: string) => void;
-  onUnapprove: (id: string) => void;
-  onDelete: (id: string) => void;
-  onBulkDelete: (ids: string[]) => void;
-  onBulkApprove: (ids: string[]) => void;
-  onBulkUnapprove: (ids: string[]) => void;
-  approvePending: boolean;
-  unapprovePending: boolean;
-  deletePending: boolean;
-  bulkDeletePending: boolean;
-  bulkApprovePending: boolean;
-  bulkUnapprovePending: boolean;
+  onDeleteUser: (id: string) => void;
+  onAssignProtocol: (userId: string, protocolId: string) => void;
 }
 
 export default function AdminTable({ 
-  recipes, 
+  users, 
   isLoading, 
-  onApprove,
-  onUnapprove, 
-  onDelete, 
-  onBulkDelete,
-  onBulkApprove,
-  onBulkUnapprove,
-  approvePending,
-  unapprovePending, 
-  deletePending,
-  bulkDeletePending,
-  bulkApprovePending,
-  bulkUnapprovePending
+  onDeleteUser,
+  onAssignProtocol
 }: AdminTableProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isAllSelected, setIsAllSelected] = useState(false);
-  const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
 
   useEffect(() => {
-    const allRecipeIds = recipes.map(recipe => recipe.id);
-    setIsAllSelected(selectedIds.length > 0 && selectedIds.length === allRecipeIds.length);
-  }, [selectedIds, recipes]);
+    const allUserIds = users.map(user => user.id);
+    setIsAllSelected(selectedIds.length > 0 && selectedIds.length === allUserIds.length);
+  }, [selectedIds, users]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(recipes.map(recipe => recipe.id));
+      setSelectedIds(users.map(user => user.id));
     } else {
       setSelectedIds([]);
     }
   };
 
-  const handleSelectRecipe = (recipeId: string, checked: boolean) => {
+  const handleSelectUser = (userId: string, checked: boolean) => {
     if (checked) {
-      setSelectedIds(prev => [...prev, recipeId]);
+      setSelectedIds(prev => [...prev, userId]);
     } else {
-      setSelectedIds(prev => prev.filter(id => id !== recipeId));
+      setSelectedIds(prev => prev.filter(id => id !== userId));
     }
-  };
-
-  const handleBulkDelete = () => {
-    if (selectedIds.length > 0) {
-      onBulkDelete(selectedIds);
-      setSelectedIds([]);
-    }
-  };
-
-  const handleRecipeClick = (recipeId: string) => {
-    setSelectedRecipeId(recipeId);
   };
 
   if (isLoading) {
@@ -92,12 +59,12 @@ export default function AdminTable({
     );
   }
 
-  if (recipes.length === 0) {
+  if (users.length === 0) {
     return (
       <div className="p-8 sm:p-12 text-center">
-        <i className="fas fa-clipboard-check text-3xl sm:text-4xl text-slate-300 mb-4"></i>
-        <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-2">No recipes found</h3>
-        <p className="text-sm sm:text-base text-slate-600">No recipes match the current filters.</p>
+        <i className="fas fa-users text-3xl sm:text-4xl text-slate-300 mb-4"></i>
+        <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-2">No users found</h3>
+        <p className="text-sm sm:text-base text-slate-600">No users match the current filters.</p>
       </div>
     );
   }
@@ -109,7 +76,7 @@ export default function AdminTable({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 bg-slate-50 rounded-lg border gap-3 sm:gap-4">
           <div className="flex items-center space-x-2 sm:space-x-4">
             <span className="text-xs sm:text-sm font-medium text-slate-700 whitespace-nowrap">
-              {selectedIds.length} recipe{selectedIds.length > 1 ? 's' : ''} selected
+              {selectedIds.length} user{selectedIds.length > 1 ? 's' : ''} selected
             </span>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
@@ -121,163 +88,82 @@ export default function AdminTable({
             >
               Clear Selection
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                const selectedRecipes = recipes.filter(r => selectedIds.includes(r.id));
-                const allApproved = selectedRecipes.every(r => r.isApproved);
-                if (allApproved) {
-                  onBulkUnapprove(selectedIds);
-                } else {
-                  onBulkApprove(selectedIds);
-                }
-                setSelectedIds([]);
-              }}
-              disabled={bulkApprovePending || bulkUnapprovePending}
-              className={`text-xs sm:text-sm py-2 sm:py-1 ${
-                recipes.filter(r => selectedIds.includes(r.id)).every(r => r.isApproved)
-                  ? 'text-yellow-600 border-yellow-200 hover:bg-yellow-50'
-                  : 'text-green-600 border-green-200 hover:bg-green-50'
-              }`}
-            >
-              {bulkApprovePending || bulkUnapprovePending ? (
-                <>
-                  <i className="fas fa-spinner fa-spin mr-2"></i>
-                  <span className="hidden sm:inline">
-                    {recipes.filter(r => selectedIds.includes(r.id)).every(r => r.isApproved)
-                      ? 'Unapproving...'
-                      : 'Approving...'}
-                  </span>
-                  <span className="sm:hidden">Processing...</span>
-                </>
-              ) : (
-                <>
-                  <i className={`fas fa-${recipes.filter(r => selectedIds.includes(r.id)).every(r => r.isApproved) ? 'times' : 'check'} mr-2`}></i>
-                  <span className="hidden sm:inline">
-                    {recipes.filter(r => selectedIds.includes(r.id)).every(r => r.isApproved)
-                      ? 'Unapprove Selected'
-                      : 'Approve Selected'}
-                  </span>
-                  <span className="sm:hidden">
-                    {recipes.filter(r => selectedIds.includes(r.id)).every(r => r.isApproved)
-                      ? 'Unapprove'
-                      : 'Approve'}
-                  </span>
-                </>
-              )}
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={handleBulkDelete}
-              disabled={bulkDeletePending}
-              className="bg-red-600 hover:bg-red-700 text-xs sm:text-sm py-2 sm:py-1"
-            >
-              {bulkDeletePending ? (
-                <>
-                  <i className="fas fa-spinner fa-spin mr-2"></i>
-                  <span className="hidden sm:inline">Deleting...</span>
-                  <span className="sm:hidden">Deleting...</span>
-                </>
-              ) : (
-                <>
-                  <i className="fas fa-trash-alt mr-2"></i>
-                  <span className="hidden sm:inline">Delete Selected</span>
-                  <span className="sm:hidden">Delete</span>
-                </>
-              )}
-            </Button>
           </div>
         </div>
       )}
 
       {/* Mobile Card View */}
       <div className="lg:hidden space-y-3">
-        {recipes.map((recipe) => (
+        {users.map((user) => (
           <Card 
-            key={recipe.id} 
-            className="shadow-sm border-0 ring-1 ring-slate-200 cursor-pointer hover:bg-slate-50 transition-colors"
-            onClick={() => handleRecipeClick(recipe.id)}
+            key={user.id} 
+            className="shadow-sm border-0 ring-1 ring-slate-200 hover:bg-slate-50 transition-colors"
           >
             <CardContent className="p-3 sm:p-4">
               <div className="flex items-start space-x-3">
                 {/* Checkbox */}
-                <div className="pt-1" onClick={e => e.stopPropagation()}>
+                <div className="pt-1">
                   <Checkbox
-                    checked={selectedIds.includes(recipe.id)}
-                    onCheckedChange={(checked) => handleSelectRecipe(recipe.id, checked as boolean)}
-                    disabled={deletePending || bulkDeletePending}
+                    checked={selectedIds.includes(user.id)}
+                    onCheckedChange={(checked) => handleSelectUser(user.id, checked as boolean)}
                   />
                 </div>
 
-                {/* Recipe Image */}
-                <img 
-                  className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg object-cover flex-shrink-0" 
-                  src={recipe.imageUrl || '/api/placeholder/100/100'} 
-                  alt={recipe.name}
-                />
+                {/* User Avatar */}
+                <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
+                  {user.profilePicture ? (
+                    <img 
+                      className="h-full w-full rounded-full object-cover" 
+                      src={user.profilePicture} 
+                      alt={user.email}
+                    />
+                  ) : (
+                    <i className="fas fa-user text-slate-400 text-xl"></i>
+                  )}
+                </div>
 
-                {/* Recipe Info */}
+                {/* User Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="text-sm sm:text-base font-medium text-slate-900 line-clamp-2 pr-2">
-                      {recipe.name}
+                      {user.name || user.email}
                     </h3>
                     <span className={`px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded-full flex-shrink-0 ${
-                      recipe.isApproved 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
+                      user.role === 'admin' 
+                        ? 'bg-red-100 text-red-800' 
+                        : user.role === 'trainer'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-green-100 text-green-800'
                     }`}>
-                      {recipe.isApproved ? 'Approved' : 'Pending'}
+                      {user.role}
                     </span>
                   </div>
 
-                  {recipe.description && (
-                    <p className="text-xs sm:text-sm text-slate-500 line-clamp-2 mb-2">
-                      {recipe.description}
-                    </p>
-                  )}
+                  <p className="text-xs sm:text-sm text-slate-500 mb-2">
+                    {user.email}
+                  </p>
 
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-3 text-xs sm:text-sm text-slate-600">
-                      <span>{recipe.caloriesKcal} cal</span>
-                      <span>{Number(recipe.proteinGrams).toFixed(0)}g protein</span>
-                    </div>
-                    {recipe.mealTypes && recipe.mealTypes.length > 0 && (
-                      <span className="px-2 py-1 text-xs bg-primary/10 text-primary rounded-full">
-                        {recipe.mealTypes[0]}
-                      </span>
-                    )}
+                    <span className="text-xs sm:text-sm text-slate-600">
+                      Joined: {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                    </span>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex flex-col sm:flex-row gap-2" onClick={e => e.stopPropagation()}>
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        recipe.isApproved ? onUnapprove(recipe.id) : onApprove(recipe.id);
-                      }}
-                      disabled={approvePending || unapprovePending || selectedIds.includes(recipe.id)}
-                      className={`text-xs ${
-                        recipe.isApproved 
-                          ? 'text-yellow-600 border-yellow-200 hover:bg-yellow-50'
-                          : 'text-green-600 border-green-200 hover:bg-green-50'
-                      }`}
+                      onClick={() => onAssignProtocol(user.id, '')}
+                      className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs"
                     >
-                      <i className={`fas fa-${recipe.isApproved ? 'times' : 'check'} mr-1`}></i>
-                      {recipe.isApproved ? 'Unapprove' : 'Approve'}
+                      <i className="fas fa-plus mr-1"></i>
+                      Assign Protocol
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete(recipe.id);
-                      }}
-                      disabled={deletePending || selectedIds.includes(recipe.id)}
+                      onClick={() => onDeleteUser(user.id)}
                       className="text-red-600 border-red-200 hover:bg-red-50 text-xs"
                     >
                       <i className="fas fa-times mr-1"></i>
@@ -299,27 +185,24 @@ export default function AdminTable({
               <th className="px-4 xl:px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider whitespace-nowrap">
                 <div className="flex items-center space-x-2">
                   <Checkbox
-                    checked={isAllSelected && recipes.length > 0}
+                    checked={isAllSelected && users.length > 0}
                     onCheckedChange={handleSelectAll}
-                    disabled={recipes.length === 0}
+                    disabled={users.length === 0}
                   />
                   <span>Select</span>
                 </div>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider whitespace-nowrap">
-                Recipe
+                User
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider whitespace-nowrap">
-                Status
+                Role
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider whitespace-nowrap">
-                Type
+                Email
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider whitespace-nowrap">
-                Nutrition
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider whitespace-nowrap">
-                Created
+                Joined
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider whitespace-nowrap">
                 Actions
@@ -327,88 +210,71 @@ export default function AdminTable({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
-            {recipes.map((recipe) => (
+            {users.map((user) => (
               <tr 
-                key={recipe.id} 
-                className="hover:bg-slate-50 cursor-pointer transition-colors"
-                onClick={() => handleRecipeClick(recipe.id)}
+                key={user.id} 
+                className="hover:bg-slate-50 transition-colors"
               >
-                <td className="px-6 py-4 whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                <td className="px-6 py-4 whitespace-nowrap">
                   <Checkbox
-                    checked={selectedIds.includes(recipe.id)}
-                    onCheckedChange={(checked) => handleSelectRecipe(recipe.id, checked as boolean)}
-                    disabled={deletePending || bulkDeletePending}
+                    checked={selectedIds.includes(user.id)}
+                    onCheckedChange={(checked) => handleSelectUser(user.id, checked as boolean)}
                   />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
-                    <img 
-                      className="h-12 w-12 rounded-lg object-cover mr-4" 
-                      src={recipe.imageUrl || '/api/placeholder/100/100'} 
-                      alt={recipe.name}
-                    />
+                    <div className="h-12 w-12 rounded-full bg-slate-200 flex items-center justify-center mr-4">
+                      {user.profilePicture ? (
+                        <img 
+                          className="h-12 w-12 rounded-full object-cover" 
+                          src={user.profilePicture} 
+                          alt={user.email}
+                        />
+                      ) : (
+                        <i className="fas fa-user text-slate-400"></i>
+                      )}
+                    </div>
                     <div>
-                      <div className="text-sm font-medium text-slate-900">{recipe.name}</div>
-                      <div className="text-sm text-slate-500">
-                        {recipe.description?.slice(0, 50)}
-                        {recipe.description && recipe.description.length > 50 ? '...' : ''}
-                      </div>
+                      <div className="text-sm font-medium text-slate-900">{user.name || 'No name'}</div>
+                      <div className="text-sm text-slate-500">{user.email}</div>
                     </div>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    recipe.isApproved 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-yellow-100 text-yellow-800'
+                    user.role === 'admin' 
+                      ? 'bg-red-100 text-red-800' 
+                      : user.role === 'trainer'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-green-100 text-green-800'
                   }`}>
-                    {recipe.isApproved ? 'Approved' : 'Pending'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-primary/10 text-primary">
-                    {(recipe.mealTypes && recipe.mealTypes.length > 0) ? recipe.mealTypes[0] : 'N/A'}
+                    {user.role}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                  <div className="flex space-x-4">
-                    <span>{recipe.caloriesKcal} cal</span>
-                    <span>{Number(recipe.proteinGrams).toFixed(0)}g protein</span>
-                  </div>
+                  {user.email}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                  {recipe.creationTimestamp 
-                    ? new Date(recipe.creationTimestamp).toLocaleDateString()
+                  {user.createdAt 
+                    ? new Date(user.createdAt).toLocaleDateString()
                     : 'N/A'
                   }
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" onClick={e => e.stopPropagation()}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex space-x-2 min-w-[180px]">
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        recipe.isApproved ? onUnapprove(recipe.id) : onApprove(recipe.id);
-                      }}
-                      disabled={approvePending || unapprovePending || selectedIds.includes(recipe.id)}
-                      className={`${
-                        recipe.isApproved 
-                          ? 'text-yellow-600 border-yellow-200 hover:bg-yellow-50'
-                          : 'text-green-600 border-green-200 hover:bg-green-50'
-                      }`}
+                      onClick={() => onAssignProtocol(user.id, '')}
+                      className="text-blue-600 border-blue-200 hover:bg-blue-50"
                     >
-                      <i className={`fas fa-${recipe.isApproved ? 'times' : 'check'} mr-1`}></i>
-                      {recipe.isApproved ? 'Unapprove' : 'Approve'}
+                      <i className="fas fa-plus mr-1"></i>
+                      Assign Protocol
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete(recipe.id);
-                      }}
-                      disabled={deletePending || selectedIds.includes(recipe.id)}
+                      onClick={() => onDeleteUser(user.id)}
                       className="text-red-600 border-red-200 hover:bg-red-50"
                     >
                       <i className="fas fa-times mr-1"></i>
@@ -421,13 +287,6 @@ export default function AdminTable({
           </tbody>
         </table>
       </div>
-
-      {/* Recipe Detail Modal */}
-      <RecipeDetailModal
-        recipeId={selectedRecipeId}
-        isOpen={!!selectedRecipeId}
-        onClose={() => setSelectedRecipeId(null)}
-      />
     </div>
   );
 }

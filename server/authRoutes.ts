@@ -7,6 +7,7 @@ import { users } from '../shared/schema';
 import crypto from 'crypto';
 import passport from './passport-config';
 import { requireAuth, requireAdmin, requireRole } from './middleware/auth';
+import { authRateLimit, logSecurityEvent } from './middleware/security';
 
 const authRouter = Router();
 
@@ -46,7 +47,7 @@ function recordLoginAttempt(email: string) {
   loginAttempts.set(email, attempts);
 }
 
-authRouter.post('/register', async (req: Request, res: Response) => {
+authRouter.post('/register', authRateLimit, async (req: Request, res: Response) => {
   try {
     const { email, password, role } = registerSchema.parse(req.body);
 
@@ -137,7 +138,7 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
-authRouter.post('/login', async (req: Request, res: Response) => {
+authRouter.post('/login', authRateLimit, async (req: Request, res: Response) => {
   try {
     const { email, password } = loginSchema.parse(req.body);
 
@@ -476,83 +477,116 @@ authRouter.put('/profile', requireAuth, async (req: AuthRequest, res: Response) 
   }
 });
 
-// Google OAuth Routes
-authRouter.get('/google', 
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
+// Google OAuth Routes - only initialize if credentials are configured
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
-authRouter.get('/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login?error=oauth_failed' }),
-  async (req: Request, res: Response) => {
-    try {
-      const user = req.user as any;
-      console.log('Google OAuth callback - user:', user);
-      
-      if (!user) {
-        console.error('No user returned from Google OAuth');
-        return res.redirect('/login?error=no_user');
+if (googleClientId && googleClientSecret && 
+    googleClientId !== 'placeholder_client_id' && 
+    googleClientSecret !== 'placeholder_client_secret') {
+  
+  console.log('Google OAuth routes enabled');
+  
+  authRouter.get('/google', 
+    passport.authenticate('google', { scope: ['profile', 'email'] })
+  );
+
+  authRouter.get('/google/callback',
+    passport.authenticate('google', { failureRedirect: '/login?error=oauth_failed' }),
+    async (req: Request, res: Response) => {
+      try {
+        const user = req.user as any;
+        console.log('Google OAuth callback - user:', user);
+        
+        if (!user) {
+          console.error('No user returned from Google OAuth');
+          return res.redirect('/login?error=no_user');
+        }
+
+        // Generate JWT tokens for the user
+        const { accessToken, refreshToken } = generateTokens(user);
+        console.log('Generated tokens for user:', user.email, 'role:', user.role);
+
+        // Set refresh token in HTTP-only cookie
+        res.cookie('refreshToken', refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+        });
+
+        // Redirect to frontend with success based on user role
+        let redirectPath = '/';
+        switch (user.role) {
+          case 'admin':
+            redirectPath = '/admin';
+            break;
+          case 'trainer':
+            redirectPath = '/trainer';
+            break;
+          case 'customer':
+            redirectPath = '/my-meal-plans';
+            break;
+        }
+        
+        // In development, we pass the token as a query parameter
+        // In production, the cookie should be sufficient
+        const redirectUrl = process.env.NODE_ENV === 'production' 
+          ? redirectPath 
+          : `http://localhost:3500${redirectPath}?token=${accessToken}`;
+        
+        console.log('Redirecting to:', redirectUrl);
+        console.log('User role:', user.role);
+        console.log('Redirect path:', redirectPath);
+        
+        res.redirect(redirectUrl);
+      } catch (error) {
+        console.error('Google OAuth callback error:', error);
+        res.redirect('/login?error=auth_error');
       }
-
-      // Generate JWT tokens for the user
-      const { accessToken, refreshToken } = generateTokens(user);
-      console.log('Generated tokens for user:', user.email, 'role:', user.role);
-
-      // Set refresh token in HTTP-only cookie
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
-      });
-
-      // Redirect to frontend with success based on user role
-      let redirectPath = '/';
-      switch (user.role) {
-        case 'admin':
-          redirectPath = '/admin';
-          break;
-        case 'trainer':
-          redirectPath = '/trainer';
-          break;
-        case 'customer':
-          redirectPath = '/my-meal-plans';
-          break;
-      }
-      
-      // In development, we pass the token as a query parameter
-      // In production, the cookie should be sufficient
-      const redirectUrl = process.env.NODE_ENV === 'production' 
-        ? redirectPath 
-        : `http://localhost:4000${redirectPath}?token=${accessToken}`;
-      
-      console.log('Redirecting to:', redirectUrl);
-      console.log('User role:', user.role);
-      console.log('Redirect path:', redirectPath);
-      
-      res.redirect(redirectUrl);
-    } catch (error) {
-      console.error('Google OAuth callback error:', error);
-      res.redirect('/login?error=auth_error');
     }
-  }
-);
+  );
 
-// Route to initiate Google OAuth with role selection
-authRouter.get('/google/:role', (req: Request, res: Response, next: NextFunction) => {
-  const { role } = req.params;
+  // Route to initiate Google OAuth with role selection
+  authRouter.get('/google/:role', (req: Request, res: Response, next: NextFunction) => {
+    const { role } = req.params;
+    
+    if (!['trainer', 'customer'].includes(role)) {
+      return res.status(400).json({ 
+        status: 'error', 
+        message: 'Invalid role specified',
+        code: 'INVALID_ROLE'
+      });
+    }
+
+    // Store the intended role in session
+    (req.session as any).intendedRole = role;
+    
+    passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+  });
+} else {
+  console.log('Google OAuth credentials not configured - Google routes disabled');
   
-  if (!['trainer', 'customer'].includes(role)) {
-    return res.status(400).json({ 
-      status: 'error', 
-      message: 'Invalid role specified',
-      code: 'INVALID_ROLE'
+  // Provide error endpoints when OAuth is not configured
+  authRouter.get('/google', (req: Request, res: Response) => {
+    res.status(503).json({
+      status: 'error',
+      message: 'Google OAuth is not configured',
+      code: 'OAUTH_NOT_CONFIGURED'
     });
-  }
-
-  // Store the intended role in session
-  (req.session as any).intendedRole = role;
+  });
   
-  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
-});
+  authRouter.get('/google/:role', (req: Request, res: Response) => {
+    res.status(503).json({
+      status: 'error',
+      message: 'Google OAuth is not configured',
+      code: 'OAUTH_NOT_CONFIGURED'
+    });
+  });
+  
+  authRouter.get('/google/callback', (req: Request, res: Response) => {
+    res.redirect('/login?error=oauth_disabled');
+  });
+}
 
 export default authRouter;

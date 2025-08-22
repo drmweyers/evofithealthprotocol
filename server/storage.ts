@@ -1,9 +1,9 @@
 /**
- * FitMeal Pro Storage Layer
+ * EvoFit Health Protocol Storage Layer
  * 
  * This module provides a clean abstraction layer over the database using the
- * Repository pattern. It handles all CRUD operations for users and recipes,
- * with comprehensive filtering, search capabilities, and proper error handling.
+ * Repository pattern. It handles all CRUD operations for users, health protocols,
+ * and progress tracking with comprehensive error handling.
  * 
  * Architecture:
  * - IStorage interface defines the contract for all storage operations
@@ -14,30 +14,34 @@
 
 import {
   users,
-  recipes,
-  personalizedRecipes,
-  personalizedMealPlans,
   customerInvitations,
-  trainerMealPlans,
-  mealPlanAssignments,
-  type User,
-  type InsertUser,
-  type Recipe,
-  type InsertRecipe,
-  type UpdateRecipe,
-  type RecipeFilter,
-  type MealPlan,
-  type CustomerInvitation,
-  type InsertCustomerInvitation,
-  type TrainerMealPlan,
-  type InsertTrainerMealPlan,
-  type TrainerMealPlanWithAssignments,
-  type MealPlanAssignment,
   passwordResetTokens,
   refreshTokens,
+  progressMeasurements,
+  progressPhotos,
+  customerGoals,
+  goalMilestones,
+  trainerHealthProtocols,
+  protocolAssignments,
+  type User,
+  type InsertUser,
+  type CustomerInvitation,
+  type InsertCustomerInvitation,
+  type ProgressMeasurement,
+  type InsertProgressMeasurement,
+  type ProgressPhoto,
+  type InsertProgressPhoto,
+  type CustomerGoal,
+  type InsertCustomerGoal,
+  type GoalMilestone,
+  type InsertGoalMilestone,
+  type TrainerHealthProtocol,
+  type InsertTrainerHealthProtocol,
+  type ProtocolAssignment,
+  type InsertProtocolAssignment,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, like, lte, gte, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, lte, gte } from "drizzle-orm";
 import { inArray } from "drizzle-orm";
 
 /**
@@ -58,7 +62,9 @@ export interface IStorage {
   linkGoogleAccount(userId: string, googleId: string): Promise<void>;
   updateUserPassword(userId: string, password: string): Promise<void>;
   updateUserEmail(userId: string, email: string): Promise<void>;
-  getCustomers(recipeId?: string, mealPlanId?: string): Promise<(User & { hasRecipe?: boolean; hasMealPlan?: boolean })[]>;
+  getCustomers(): Promise<User[]>;
+  getTrainers(): Promise<User[]>;
+  getAllUsers(): Promise<User[]>;
   
   // Password Reset
   createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<void>;
@@ -77,53 +83,49 @@ export interface IStorage {
   markInvitationAsUsed(token: string): Promise<void>;
   deleteExpiredInvitations(): Promise<number>;
   
-  // Recipe CRUD operations
-  createRecipe(recipe: InsertRecipe): Promise<Recipe>;
-  getRecipe(id: string): Promise<Recipe | undefined>;
-  updateRecipe(id: string, updates: UpdateRecipe): Promise<Recipe | undefined>;
-  deleteRecipe(id: string): Promise<boolean>;
-  bulkDeleteRecipes(ids: string[]): Promise<number>;
+  // Progress Tracking Operations
+  createProgressMeasurement(measurement: InsertProgressMeasurement): Promise<ProgressMeasurement>;
+  getProgressMeasurements(customerId: string): Promise<ProgressMeasurement[]>;
+  updateProgressMeasurement(id: string, updates: Partial<InsertProgressMeasurement>): Promise<ProgressMeasurement | undefined>;
+  deleteProgressMeasurement(id: string): Promise<boolean>;
   
-  // Advanced recipe operations
-  searchRecipes(filters: RecipeFilter): Promise<{ recipes: Recipe[]; total: number }>;
-  approveRecipe(id: string): Promise<Recipe | undefined>;
+  createProgressPhoto(photo: InsertProgressPhoto): Promise<ProgressPhoto>;
+  getProgressPhotos(customerId: string): Promise<ProgressPhoto[]>;
+  deleteProgressPhoto(id: string): Promise<boolean>;
   
-  // Analytics and reporting
-  getRecipeStats(): Promise<{
-    total: number;
-    approved: number;
-    pending: number;
-  }>;
-
-  // Personalized recipes
-  getPersonalizedRecipes(customerId: string): Promise<Recipe[]>;
-  assignRecipeToCustomers(trainerId: string, recipeId: string, customerIds: string[]): Promise<void>;
+  createCustomerGoal(goal: InsertCustomerGoal): Promise<CustomerGoal>;
+  getCustomerGoals(customerId: string): Promise<CustomerGoal[]>;
+  updateCustomerGoal(id: string, updates: Partial<InsertCustomerGoal>): Promise<CustomerGoal | undefined>;
+  deleteCustomerGoal(id: string): Promise<boolean>;
   
-  // Personalized meal plans
-  assignMealPlanToCustomers(trainerId: string, mealPlanData: MealPlan, customerIds: string[]): Promise<void>;
-  getPersonalizedMealPlans(customerId: string): Promise<any[]>;
+  createGoalMilestone(milestone: InsertGoalMilestone): Promise<GoalMilestone>;
+  getGoalMilestones(goalId: string): Promise<GoalMilestone[]>;
+  updateGoalMilestone(id: string, updates: Partial<InsertGoalMilestone>): Promise<GoalMilestone | undefined>;
+  deleteGoalMilestone(id: string): Promise<boolean>;
   
-  // Trainer meal plans
-  createTrainerMealPlan(mealPlan: InsertTrainerMealPlan): Promise<TrainerMealPlan>;
-  getTrainerMealPlan(id: string): Promise<TrainerMealPlan | undefined>;
-  getTrainerMealPlans(trainerId: string): Promise<TrainerMealPlanWithAssignments[]>;
-  updateTrainerMealPlan(id: string, updates: Partial<InsertTrainerMealPlan>): Promise<TrainerMealPlan | undefined>;
-  deleteTrainerMealPlan(id: string): Promise<boolean>;
+  // Health Protocol Operations
+  createHealthProtocol(protocol: InsertTrainerHealthProtocol): Promise<TrainerHealthProtocol>;
+  getHealthProtocol(id: string): Promise<TrainerHealthProtocol | undefined>;
+  getTrainerHealthProtocols(trainerId: string): Promise<TrainerHealthProtocol[]>;
+  getAllHealthProtocols(): Promise<TrainerHealthProtocol[]>;
+  updateHealthProtocol(id: string, updates: Partial<InsertTrainerHealthProtocol>): Promise<TrainerHealthProtocol | undefined>;
+  deleteHealthProtocol(id: string): Promise<boolean>;
   
-  // Meal plan assignments
-  assignMealPlanToCustomer(mealPlanId: string, customerId: string, assignedBy: string, notes?: string): Promise<MealPlanAssignment>;
-  unassignMealPlanFromCustomer(mealPlanId: string, customerId: string): Promise<boolean>;
-  getMealPlanAssignments(mealPlanId: string): Promise<MealPlanAssignment[]>;
+  // Protocol Assignment Operations
+  assignProtocolToCustomer(assignment: InsertProtocolAssignment): Promise<ProtocolAssignment>;
+  getProtocolAssignments(protocolId: string): Promise<ProtocolAssignment[]>;
+  getCustomerProtocolAssignments(customerId: string): Promise<ProtocolAssignment[]>;
+  getTrainerProtocolAssignments(trainerId: string): Promise<ProtocolAssignment[]>;
+  updateProtocolAssignment(id: string, updates: Partial<InsertProtocolAssignment>): Promise<ProtocolAssignment | undefined>;
+  unassignProtocolFromCustomer(protocolId: string, customerId: string): Promise<boolean>;
   
   // Customer management
   getTrainerCustomers(trainerId: string): Promise<{id: string; email: string; firstAssignedAt: string}[]>;
-  getCustomerMealPlans(trainerId: string, customerId: string): Promise<any[]>;
-  removeMealPlanAssignment(trainerId: string, assignmentId: string): Promise<boolean>;
   
   // Transaction support
   transaction<T>(action: (trx: any) => Promise<T>): Promise<T>;
   
-  // Specialized Protocol Methods
+  // Health Protocol Methods
   getLongevityProtocolTemplates(): Promise<any[]>;
   getAntiParasiticIngredients(): Promise<any[]>;
   getUserHealthPreferences(userId: string): Promise<any>;
@@ -183,34 +185,16 @@ export class DatabaseStorage implements IStorage {
     await db.update(users).set({ email }).where(eq(users.id, userId));
   }
 
-  async getCustomers(recipeId?: string, mealPlanId?: string): Promise<(User & { hasRecipe?: boolean; hasMealPlan?: boolean })[]> {
-    const customers = await db.select().from(users).where(eq(users.role, 'customer'));
-    
-    let recipeAssignments: Set<string> = new Set();
-    let mealPlanAssignments: Set<string> = new Set();
-    
-    if (recipeId) {
-      const assignments = await db
-        .select()
-        .from(personalizedRecipes)
-        .where(eq(personalizedRecipes.recipeId, recipeId));
-      
-      recipeAssignments = new Set(assignments.map(a => a.customerId));
-    }
-    
-    // Check for existing meal plan assignments for each customer
-    // This shows which customers already have ANY meal plan assigned to them
-    const existingMealPlanAssignments = await db
-      .select({ customerId: personalizedMealPlans.customerId })
-      .from(personalizedMealPlans);
-    
-    mealPlanAssignments = new Set(existingMealPlanAssignments.map(a => a.customerId));
-    
-    return customers.map(customer => ({
-      ...customer,
-      hasRecipe: recipeId ? recipeAssignments.has(customer.id) : false,
-      hasMealPlan: mealPlanAssignments.has(customer.id)
-    }));
+  async getCustomers(): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.role, 'customer'));
+  }
+
+  async getTrainers(): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.role, 'trainer'));
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(desc(users.createdAt));
   }
 
   // Password Reset
@@ -241,254 +225,6 @@ export class DatabaseStorage implements IStorage {
     await db.delete(refreshTokens).where(eq(refreshTokens.token, token));
   }
 
-  // Recipe operations
-  async createRecipe(recipeData: InsertRecipe): Promise<Recipe> {
-    const [recipe] = await db.insert(recipes).values(recipeData as any).returning();
-    return recipe;
-  }
-
-  async getRecipe(id: string): Promise<Recipe | undefined> {
-    const [recipe] = await db.select().from(recipes).where(eq(recipes.id, id));
-    return recipe;
-  }
-
-  async updateRecipe(id: string, updates: UpdateRecipe): Promise<Recipe | undefined> {
-    const updateData: any = { 
-      ...updates, 
-      lastUpdatedTimestamp: new Date() 
-    };
-    
-    // Ensure array fields are properly handled
-    if (updates.mealTypes) updateData.mealTypes = updates.mealTypes;
-    if (updates.dietaryTags) updateData.dietaryTags = updates.dietaryTags;
-    if (updates.mainIngredientTags) updateData.mainIngredientTags = updates.mainIngredientTags;
-    if (updates.ingredientsJson) updateData.ingredientsJson = updates.ingredientsJson;
-    
-    const [recipe] = await db
-      .update(recipes)
-      .set(updateData)
-      .where(eq(recipes.id, id))
-      .returning();
-    return recipe;
-  }
-
-  async deleteRecipe(id: string): Promise<boolean> {
-    try {
-      // First check if recipe exists
-      const existingRecipe = await this.getRecipe(id);
-      if (!existingRecipe) {
-        return false;
-      }
-      
-      await db.delete(recipes).where(eq(recipes.id, id));
-      return true;
-    } catch (error) {
-      console.error('Error deleting recipe:', error);
-      return false;
-    }
-  }
-
-  async bulkDeleteRecipes(ids: string[]): Promise<number> {
-    try {
-      const result = await db.delete(recipes).where(inArray(recipes.id, ids));
-      return Number(result.rowCount) || 0;
-    } catch (error) {
-      console.error('Error bulk deleting recipes:', error);
-      return 0;
-    }
-  }
-
-  async approveRecipe(id: string): Promise<Recipe | undefined> {
-    return this.updateRecipe(id, { isApproved: true });
-  }
-
-  async getPersonalizedRecipes(customerId: string): Promise<Recipe[]> {
-    const assignedRecipes = await db
-      .select({
-        recipe: recipes,
-      })
-      .from(personalizedRecipes)
-      .leftJoin(recipes, eq(personalizedRecipes.recipeId, recipes.id))
-      .where(eq(personalizedRecipes.customerId, customerId))
-      .orderBy(desc(personalizedRecipes.assignedAt));
-
-    return assignedRecipes.map(r => r.recipe).filter((r): r is Recipe => r !== null);
-  }
-
-  async assignRecipeToCustomers(trainerId: string, recipeId: string, customerIds: string[]): Promise<void> {
-    // Get current assignments for this recipe
-    const currentAssignments = await db
-      .select()
-      .from(personalizedRecipes)
-      .where(eq(personalizedRecipes.recipeId, recipeId));
-    
-    const currentlyAssignedIds = new Set(currentAssignments.map(a => a.customerId));
-    
-    // Determine which customers to add and remove
-    const toAdd = customerIds.filter(id => !currentlyAssignedIds.has(id));
-    const toRemove = Array.from(currentlyAssignedIds).filter(id => !customerIds.includes(id));
-    
-    // Remove assignments that are no longer needed
-    if (toRemove.length > 0) {
-      await db
-        .delete(personalizedRecipes)
-        .where(
-          and(
-            eq(personalizedRecipes.recipeId, recipeId),
-            inArray(personalizedRecipes.customerId, toRemove)
-          )
-        );
-    }
-    
-    // Add new assignments
-    if (toAdd.length > 0) {
-      const assignments = toAdd.map(customerId => ({
-        customerId,
-        trainerId,
-        recipeId,
-      }));
-      
-      await db.insert(personalizedRecipes).values(assignments);
-    }
-  }
-
-  async assignMealPlanToCustomers(trainerId: string, mealPlanData: MealPlan, customerIds: string[]): Promise<void> {
-    // Add new meal plan assignments without removing existing ones
-    // This allows customers to have multiple meal plans assigned
-    if (customerIds.length > 0) {
-      const assignments = customerIds.map(customerId => ({
-        customerId,
-        trainerId,
-        mealPlanData,
-      }));
-      
-      await db.insert(personalizedMealPlans).values(assignments);
-    }
-  }
-
-  async getPersonalizedMealPlans(customerId: string): Promise<any[]> {
-    const assignedMealPlans = await db
-      .select({
-        id: personalizedMealPlans.id,
-        customerId: personalizedMealPlans.customerId,
-        trainerId: personalizedMealPlans.trainerId,
-        mealPlanData: personalizedMealPlans.mealPlanData,
-        assignedAt: personalizedMealPlans.assignedAt,
-      })
-      .from(personalizedMealPlans)
-      .where(eq(personalizedMealPlans.customerId, customerId))
-      .orderBy(desc(personalizedMealPlans.assignedAt));
-
-    return assignedMealPlans;
-  }
-
-  async searchRecipes(filters: RecipeFilter): Promise<{ recipes: Recipe[]; total: number }> {
-    const conditions = [];
-
-    // Apply filters
-    if (filters.approved !== undefined) {
-      conditions.push(eq(recipes.isApproved, filters.approved));
-    }
-
-    if (filters.search) {
-      const searchTerm = `%${filters.search.toLowerCase()}%`;
-      conditions.push(
-        sql`(
-          LOWER(${recipes.name}) LIKE ${searchTerm} OR 
-          LOWER(${recipes.description}) LIKE ${searchTerm} OR
-          LOWER(${recipes.ingredientsJson}::text) LIKE ${searchTerm}
-        )`
-      );
-    }
-
-    if (filters.mealType) {
-      conditions.push(sql`${recipes.mealTypes} @> ${JSON.stringify([filters.mealType])}`);
-    }
-
-    if (filters.dietaryTag) {
-      conditions.push(sql`${recipes.dietaryTags} @> ${JSON.stringify([filters.dietaryTag])}`);
-    }
-
-    if (filters.maxPrepTime) {
-      conditions.push(lte(recipes.prepTimeMinutes, filters.maxPrepTime));
-    }
-
-    if (filters.maxCalories) {
-      conditions.push(lte(recipes.caloriesKcal, filters.maxCalories));
-    }
-
-    if (filters.minCalories) {
-      conditions.push(gte(recipes.caloriesKcal, filters.minCalories));
-    }
-
-    if (filters.minProtein) {
-      conditions.push(gte(recipes.proteinGrams, filters.minProtein.toString()));
-    }
-
-    if (filters.maxProtein) {
-      conditions.push(lte(recipes.proteinGrams, filters.maxProtein.toString()));
-    }
-
-    if (filters.minCarbs) {
-      conditions.push(gte(recipes.carbsGrams, filters.minCarbs.toString()));
-    }
-
-    if (filters.maxCarbs) {
-      conditions.push(lte(recipes.carbsGrams, filters.maxCarbs.toString()));
-    }
-
-    if (filters.minFat) {
-      conditions.push(gte(recipes.fatGrams, filters.minFat.toString()));
-    }
-
-    if (filters.maxFat) {
-      conditions.push(lte(recipes.fatGrams, filters.maxFat.toString()));
-    }
-
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
-    // Get total count
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(recipes)
-      .where(whereClause);
-
-    // Get paginated results
-    const page = filters.page || 1;
-    const limit = filters.limit || 12;
-    const offset = (page - 1) * limit;
-
-    const recipeResults = await db
-      .select()
-      .from(recipes)
-      .where(whereClause)
-      .orderBy(desc(recipes.creationTimestamp))
-      .limit(limit)
-      .offset(offset);
-
-    return { recipes: recipeResults, total: count };
-  }
-
-  async getRecipeStats(): Promise<{
-    total: number;
-    approved: number;
-    pending: number;
-  }> {
-    const [stats] = await db
-      .select({
-        total: sql<number>`count(*)`,
-        approved: sql<number>`count(*) filter (where is_approved = true)`,
-        pending: sql<number>`count(*) filter (where is_approved = false)`,
-      })
-      .from(recipes);
-
-    return {
-      total: stats.total,
-      approved: stats.approved,
-      pending: stats.pending,
-    };
-  }
-  
   // Customer Invitation Operations
   async createInvitation(invitationData: InsertCustomerInvitation): Promise<CustomerInvitation> {
     const [invitation] = await db.insert(customerInvitations).values(invitationData).returning();
@@ -527,128 +263,213 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Trainer meal plans
-  async createTrainerMealPlan(mealPlan: InsertTrainerMealPlan): Promise<TrainerMealPlan> {
-    const [created] = await db.insert(trainerMealPlans).values(mealPlan).returning();
-    return created;
+  // Progress Tracking Operations
+  async createProgressMeasurement(measurementData: InsertProgressMeasurement): Promise<ProgressMeasurement> {
+    const [measurement] = await db.insert(progressMeasurements).values(measurementData).returning();
+    return measurement;
   }
 
-  async getTrainerMealPlan(id: string): Promise<TrainerMealPlan | undefined> {
-    const [plan] = await db.select().from(trainerMealPlans).where(eq(trainerMealPlans.id, id));
-    return plan;
-  }
-
-  async getTrainerMealPlans(trainerId: string): Promise<TrainerMealPlanWithAssignments[]> {
-    // Get all meal plans for the trainer
-    const plans = await db
+  async getProgressMeasurements(customerId: string): Promise<ProgressMeasurement[]> {
+    return await db
       .select()
-      .from(trainerMealPlans)
-      .where(eq(trainerMealPlans.trainerId, trainerId))
-      .orderBy(desc(trainerMealPlans.createdAt));
-
-    // Get assignments for each plan
-    const plansWithAssignments = await Promise.all(
-      plans.map(async (plan) => {
-        const assignments = await db
-          .select({
-            customerId: mealPlanAssignments.customerId,
-            customerEmail: users.email,
-            assignedAt: mealPlanAssignments.assignedAt,
-          })
-          .from(mealPlanAssignments)
-          .leftJoin(users, eq(users.id, mealPlanAssignments.customerId))
-          .where(eq(mealPlanAssignments.mealPlanId, plan.id));
-
-        return {
-          ...plan,
-          assignments: assignments.map(a => ({
-            customerId: a.customerId,
-            customerEmail: a.customerEmail || '',
-            assignedAt: a.assignedAt || new Date(),
-          })),
-          assignmentCount: assignments.length,
-        };
-      })
-    );
-
-    return plansWithAssignments;
+      .from(progressMeasurements)
+      .where(eq(progressMeasurements.customerId, customerId))
+      .orderBy(desc(progressMeasurements.measurementDate));
   }
 
-  async updateTrainerMealPlan(id: string, updates: Partial<InsertTrainerMealPlan>): Promise<TrainerMealPlan | undefined> {
+  async updateProgressMeasurement(id: string, updates: Partial<InsertProgressMeasurement>): Promise<ProgressMeasurement | undefined> {
     const [updated] = await db
-      .update(trainerMealPlans)
-      .set({
-        ...updates,
-        updatedAt: new Date(),
-      })
-      .where(eq(trainerMealPlans.id, id))
+      .update(progressMeasurements)
+      .set(updates)
+      .where(eq(progressMeasurements.id, id))
       .returning();
     return updated;
   }
 
-  async deleteTrainerMealPlan(id: string): Promise<boolean> {
-    const result = await db.delete(trainerMealPlans).where(eq(trainerMealPlans.id, id));
+  async deleteProgressMeasurement(id: string): Promise<boolean> {
+    const result = await db.delete(progressMeasurements).where(eq(progressMeasurements.id, id));
     return Number(result.rowCount) > 0;
   }
 
-  // Meal plan assignments
-  async assignMealPlanToCustomer(mealPlanId: string, customerId: string, assignedBy: string, notes?: string): Promise<MealPlanAssignment> {
-    const [assignment] = await db
-      .insert(mealPlanAssignments)
-      .values({
-        mealPlanId,
-        customerId,
-        assignedBy,
-        notes,
-      })
+  async createProgressPhoto(photoData: InsertProgressPhoto): Promise<ProgressPhoto> {
+    const [photo] = await db.insert(progressPhotos).values(photoData).returning();
+    return photo;
+  }
+
+  async getProgressPhotos(customerId: string): Promise<ProgressPhoto[]> {
+    return await db
+      .select()
+      .from(progressPhotos)
+      .where(eq(progressPhotos.customerId, customerId))
+      .orderBy(desc(progressPhotos.photoDate));
+  }
+
+  async deleteProgressPhoto(id: string): Promise<boolean> {
+    const result = await db.delete(progressPhotos).where(eq(progressPhotos.id, id));
+    return Number(result.rowCount) > 0;
+  }
+
+  async createCustomerGoal(goalData: InsertCustomerGoal): Promise<CustomerGoal> {
+    const [goal] = await db.insert(customerGoals).values(goalData).returning();
+    return goal;
+  }
+
+  async getCustomerGoals(customerId: string): Promise<CustomerGoal[]> {
+    return await db
+      .select()
+      .from(customerGoals)
+      .where(eq(customerGoals.customerId, customerId))
+      .orderBy(desc(customerGoals.createdAt));
+  }
+
+  async updateCustomerGoal(id: string, updates: Partial<InsertCustomerGoal>): Promise<CustomerGoal | undefined> {
+    const [updated] = await db
+      .update(customerGoals)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(customerGoals.id, id))
       .returning();
+    return updated;
+  }
+
+  async deleteCustomerGoal(id: string): Promise<boolean> {
+    const result = await db.delete(customerGoals).where(eq(customerGoals.id, id));
+    return Number(result.rowCount) > 0;
+  }
+
+  async createGoalMilestone(milestoneData: InsertGoalMilestone): Promise<GoalMilestone> {
+    const [milestone] = await db.insert(goalMilestones).values(milestoneData).returning();
+    return milestone;
+  }
+
+  async getGoalMilestones(goalId: string): Promise<GoalMilestone[]> {
+    return await db
+      .select()
+      .from(goalMilestones)
+      .where(eq(goalMilestones.goalId, goalId))
+      .orderBy(desc(goalMilestones.createdAt));
+  }
+
+  async updateGoalMilestone(id: string, updates: Partial<InsertGoalMilestone>): Promise<GoalMilestone | undefined> {
+    const [updated] = await db
+      .update(goalMilestones)
+      .set(updates)
+      .where(eq(goalMilestones.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteGoalMilestone(id: string): Promise<boolean> {
+    const result = await db.delete(goalMilestones).where(eq(goalMilestones.id, id));
+    return Number(result.rowCount) > 0;
+  }
+
+  // Health Protocol Operations
+  async createHealthProtocol(protocolData: InsertTrainerHealthProtocol): Promise<TrainerHealthProtocol> {
+    const [protocol] = await db.insert(trainerHealthProtocols).values(protocolData).returning();
+    return protocol;
+  }
+
+  async getHealthProtocol(id: string): Promise<TrainerHealthProtocol | undefined> {
+    const [protocol] = await db.select().from(trainerHealthProtocols).where(eq(trainerHealthProtocols.id, id));
+    return protocol;
+  }
+
+  async getTrainerHealthProtocols(trainerId: string): Promise<TrainerHealthProtocol[]> {
+    return await db
+      .select()
+      .from(trainerHealthProtocols)
+      .where(eq(trainerHealthProtocols.trainerId, trainerId))
+      .orderBy(desc(trainerHealthProtocols.createdAt));
+  }
+
+  async getAllHealthProtocols(): Promise<TrainerHealthProtocol[]> {
+    return await db
+      .select()
+      .from(trainerHealthProtocols)
+      .orderBy(desc(trainerHealthProtocols.createdAt));
+  }
+
+  async updateHealthProtocol(id: string, updates: Partial<InsertTrainerHealthProtocol>): Promise<TrainerHealthProtocol | undefined> {
+    const [updated] = await db
+      .update(trainerHealthProtocols)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(trainerHealthProtocols.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteHealthProtocol(id: string): Promise<boolean> {
+    const result = await db.delete(trainerHealthProtocols).where(eq(trainerHealthProtocols.id, id));
+    return Number(result.rowCount) > 0;
+  }
+
+  // Protocol Assignment Operations
+  async assignProtocolToCustomer(assignmentData: InsertProtocolAssignment): Promise<ProtocolAssignment> {
+    const [assignment] = await db.insert(protocolAssignments).values(assignmentData).returning();
     return assignment;
   }
 
-  async unassignMealPlanFromCustomer(mealPlanId: string, customerId: string): Promise<boolean> {
+  async getProtocolAssignments(protocolId: string): Promise<ProtocolAssignment[]> {
+    return await db
+      .select()
+      .from(protocolAssignments)
+      .where(eq(protocolAssignments.protocolId, protocolId))
+      .orderBy(desc(protocolAssignments.assignedAt));
+  }
+
+  async getCustomerProtocolAssignments(customerId: string): Promise<ProtocolAssignment[]> {
+    return await db
+      .select()
+      .from(protocolAssignments)
+      .where(eq(protocolAssignments.customerId, customerId))
+      .orderBy(desc(protocolAssignments.assignedAt));
+  }
+
+  async getTrainerProtocolAssignments(trainerId: string): Promise<ProtocolAssignment[]> {
+    return await db
+      .select()
+      .from(protocolAssignments)
+      .where(eq(protocolAssignments.trainerId, trainerId))
+      .orderBy(desc(protocolAssignments.assignedAt));
+  }
+
+  async updateProtocolAssignment(id: string, updates: Partial<InsertProtocolAssignment>): Promise<ProtocolAssignment | undefined> {
+    const [updated] = await db
+      .update(protocolAssignments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(protocolAssignments.id, id))
+      .returning();
+    return updated;
+  }
+
+  async unassignProtocolFromCustomer(protocolId: string, customerId: string): Promise<boolean> {
     const result = await db
-      .delete(mealPlanAssignments)
+      .delete(protocolAssignments)
       .where(
         and(
-          eq(mealPlanAssignments.mealPlanId, mealPlanId),
-          eq(mealPlanAssignments.customerId, customerId)
+          eq(protocolAssignments.protocolId, protocolId),
+          eq(protocolAssignments.customerId, customerId)
         )
       );
     return Number(result.rowCount) > 0;
   }
 
-  async getMealPlanAssignments(mealPlanId: string): Promise<MealPlanAssignment[]> {
-    return await db
-      .select()
-      .from(mealPlanAssignments)
-      .where(eq(mealPlanAssignments.mealPlanId, mealPlanId));
-  }
-
   // Customer management functions
   async getTrainerCustomers(trainerId: string): Promise<{id: string; email: string; firstAssignedAt: string}[]> {
-    // Get unique customers who have meal plans assigned by this trainer
-    const customersWithMealPlans = await db.select({
-      customerId: personalizedMealPlans.customerId,
+    // Get unique customers who have protocols assigned by this trainer
+    const customersWithProtocols = await db.select({
+      customerId: protocolAssignments.customerId,
       customerEmail: users.email,
-      assignedAt: personalizedMealPlans.assignedAt,
+      assignedAt: protocolAssignments.assignedAt,
     })
-    .from(personalizedMealPlans)
-    .innerJoin(users, eq(users.id, personalizedMealPlans.customerId))
-    .where(eq(personalizedMealPlans.trainerId, trainerId));
-    
-    const customersWithRecipes = await db.select({
-      customerId: personalizedRecipes.customerId,
-      customerEmail: users.email,
-      assignedAt: personalizedRecipes.assignedAt,
-    })
-    .from(personalizedRecipes)
-    .innerJoin(users, eq(users.id, personalizedRecipes.customerId))
-    .where(eq(personalizedRecipes.trainerId, trainerId));
+    .from(protocolAssignments)
+    .innerJoin(users, eq(users.id, protocolAssignments.customerId))
+    .where(eq(protocolAssignments.trainerId, trainerId));
     
     // Combine and deduplicate customers
     const customerMap = new Map();
     
-    [...customersWithMealPlans, ...customersWithRecipes].forEach(customer => {
+    customersWithProtocols.forEach(customer => {
       if (!customerMap.has(customer.customerId)) {
         customerMap.set(customer.customerId, {
           id: customer.customerId,
@@ -666,39 +487,12 @@ export class DatabaseStorage implements IStorage {
     return Array.from(customerMap.values());
   }
 
-  async getCustomerMealPlans(trainerId: string, customerId: string): Promise<any[]> {
-    return await db.select()
-      .from(personalizedMealPlans)
-      .where(
-        and(
-          eq(personalizedMealPlans.trainerId, trainerId),
-          eq(personalizedMealPlans.customerId, customerId)
-        )
-      );
-  }
-
-  async removeMealPlanAssignment(trainerId: string, assignmentId: string): Promise<boolean> {
-    try {
-      const result = await db.delete(personalizedMealPlans)
-        .where(
-          and(
-            eq(personalizedMealPlans.id, assignmentId),
-            eq(personalizedMealPlans.trainerId, trainerId)
-          )
-        );
-      return true;
-    } catch (error) {
-      console.error('Error removing meal plan assignment:', error);
-      return false;
-    }
-  }
-
   // Transaction support
   async transaction<T>(action: (trx: any) => Promise<T>): Promise<T> {
     return db.transaction(action);
   }
   
-  // Specialized Protocol Methods Implementation
+  // Health Protocol Methods Implementation
   async getLongevityProtocolTemplates(): Promise<any[]> {
     // Mock data for longevity protocol templates
     return [

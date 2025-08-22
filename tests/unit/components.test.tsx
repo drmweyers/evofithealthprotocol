@@ -57,7 +57,7 @@ const MockLogin = () => {
 // Mock HealthProtocolDashboard component
 const MockHealthProtocolDashboard = () => {
   const [activeTab, setActiveTab] = React.useState('protocols');
-  const mockUser = mockUseAuth();
+  const { user } = mockUseAuth();
   const navigate = mockNavigate;
 
   const handleLogout = () => {
@@ -68,7 +68,7 @@ const MockHealthProtocolDashboard = () => {
     <div data-testid="health-protocol-dashboard">
       <nav>
         <h1>Health Protocol Management System</h1>
-        <span>Welcome, {mockUser?.email}</span>
+        <span>Welcome, {user?.email}</span>
         <button data-testid="logout-button" onClick={handleLogout}>
           Logout
         </button>

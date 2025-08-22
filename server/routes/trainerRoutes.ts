@@ -3,8 +3,6 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import { storage } from '../storage';
 import { eq, sql, and, desc, inArray } from 'drizzle-orm';
 import { 
-  personalizedRecipes, 
-  personalizedMealPlans, 
   users, 
   progressMeasurements, 
   customerGoals, 
@@ -12,12 +10,12 @@ import {
   protocolAssignments,
   createHealthProtocolSchema,
   assignProtocolSchema,
-  type MealPlan,
   type TrainerHealthProtocol,
   type ProtocolAssignment 
 } from '@shared/schema';
 import { db } from '../db';
 import { z } from 'zod';
+import { generateHealthProtocol, parseNaturalLanguageForHealthProtocol } from '../services/openai';
 
 const trainerRouter = Router();
 
@@ -26,45 +24,45 @@ trainerRouter.get('/profile/stats', requireAuth, requireRole('trainer'), async (
   try {
     const trainerId = req.user!.id;
     
-    // Get count of clients (customers with assigned meal plans/recipes from this trainer)
-    const [clientsWithMealPlans] = await db.select({
-      count: sql<number>`count(distinct ${personalizedMealPlans.customerId})::int`,
+    // Get count of clients (customers with assigned protocols from this trainer)
+    const [clientsWithProtocols] = await db.select({
+      count: sql<number>`count(distinct ${protocolAssignments.customerId})::int`,
     })
-    .from(personalizedMealPlans)
-    .where(eq(personalizedMealPlans.trainerId, trainerId));
+    .from(protocolAssignments)
+    .where(eq(protocolAssignments.trainerId, trainerId));
 
-    const [clientsWithRecipes] = await db.select({
-      count: sql<number>`count(distinct ${personalizedRecipes.customerId})::int`,
-    })
-    .from(personalizedRecipes)
-    .where(eq(personalizedRecipes.trainerId, trainerId));
-
-    // Get total meal plans created by this trainer
-    const [mealPlansCreated] = await db.select({
+    // Get total protocols created by this trainer
+    const [protocolsCreated] = await db.select({
       count: sql<number>`count(*)::int`,
     })
-    .from(personalizedMealPlans)
-    .where(eq(personalizedMealPlans.trainerId, trainerId));
+    .from(trainerHealthProtocols)
+    .where(eq(trainerHealthProtocols.trainerId, trainerId));
 
-    // Get total recipes assigned by this trainer
-    const [recipesAssigned] = await db.select({
+    // Get total protocol assignments by this trainer
+    const [protocolsAssigned] = await db.select({
       count: sql<number>`count(*)::int`,
     })
-    .from(personalizedRecipes)
-    .where(eq(personalizedRecipes.trainerId, trainerId));
+    .from(protocolAssignments)
+    .where(eq(protocolAssignments.trainerId, trainerId));
 
-    // Calculate unique clients (union of clients with meal plans and recipes)
-    const uniqueClients = Math.max(
-      clientsWithMealPlans?.count || 0,
-      clientsWithRecipes?.count || 0
+    // Get active protocol assignments
+    const [activeProtocols] = await db.select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(protocolAssignments)
+    .where(
+      and(
+        eq(protocolAssignments.trainerId, trainerId),
+        eq(protocolAssignments.status, 'active')
+      )
     );
 
     const stats = {
-      totalClients: uniqueClients,
-      totalMealPlansCreated: mealPlansCreated?.count || 0,
-      totalRecipesAssigned: recipesAssigned?.count || 0,
-      activeMealPlans: mealPlansCreated?.count || 0, // Simplified for now
-      clientSatisfactionRate: 95, // Mock data - would be calculated from client feedback
+      totalClients: clientsWithProtocols?.count || 0,
+      totalProtocolsCreated: protocolsCreated?.count || 0,
+      totalProtocolsAssigned: protocolsAssigned?.count || 0,
+      activeProtocols: activeProtocols?.count || 0,
+      clientCompletionRate: 85, // Mock data - would be calculated from completed protocols
     };
 
     res.json(stats);
@@ -82,65 +80,44 @@ trainerRouter.get('/profile/stats', requireAuth, requireRole('trainer'), async (
 trainerRouter.get('/customers', requireAuth, requireRole('trainer'), async (req, res) => {
   try {
     const trainerId = req.user!.id;
-    const { recipeId } = req.query;
     
-    // Get unique customers who have meal plans or recipes assigned by this trainer
-    const customersWithMealPlans = await db.select({
-      customerId: personalizedMealPlans.customerId,
+    // Get unique customers who have protocols assigned by this trainer
+    const customersWithProtocols = await db.select({
+      customerId: protocolAssignments.customerId,
       customerEmail: users.email,
-      assignedAt: personalizedMealPlans.assignedAt,
+      customerName: users.name,
+      assignedAt: protocolAssignments.assignedAt,
+      status: protocolAssignments.status,
     })
-    .from(personalizedMealPlans)
-    .innerJoin(users, eq(users.id, personalizedMealPlans.customerId))
-    .where(eq(personalizedMealPlans.trainerId, trainerId));
+    .from(protocolAssignments)
+    .innerJoin(users, eq(users.id, protocolAssignments.customerId))
+    .where(eq(protocolAssignments.trainerId, trainerId))
+    .orderBy(desc(protocolAssignments.assignedAt));
     
-    const customersWithRecipes = await db.select({
-      customerId: personalizedRecipes.customerId,
-      customerEmail: users.email,
-      assignedAt: personalizedRecipes.assignedAt,
-    })
-    .from(personalizedRecipes)
-    .innerJoin(users, eq(users.id, personalizedRecipes.customerId))
-    .where(eq(personalizedRecipes.trainerId, trainerId));
-    
-    // If recipeId is provided, get customers who have this specific recipe assigned
-    let customersWithThisRecipe = new Set();
-    if (recipeId) {
-      const recipeAssignments = await db.select({
-        customerId: personalizedRecipes.customerId,
-      })
-      .from(personalizedRecipes)
-      .where(
-        and(
-          eq(personalizedRecipes.trainerId, trainerId),
-          eq(personalizedRecipes.recipeId, recipeId as string)
-        )
-      );
-      customersWithThisRecipe = new Set(recipeAssignments.map(a => a.customerId));
-    }
-    
-    // Combine and deduplicate customers
+    // Group by customer to avoid duplicates
     const customerMap = new Map();
-    
-    [...customersWithMealPlans, ...customersWithRecipes].forEach(customer => {
+    customersWithProtocols.forEach(customer => {
       if (!customerMap.has(customer.customerId)) {
         customerMap.set(customer.customerId, {
           id: customer.customerId,
           email: customer.customerEmail,
-          role: 'customer',
-          firstAssignedAt: customer.assignedAt,
-          hasRecipe: recipeId ? customersWithThisRecipe.has(customer.customerId) : false,
+          name: customer.customerName,
+          firstAssignedAt: customer.assignedAt?.toISOString() || new Date().toISOString(),
+          activeProtocols: 0,
+          completedProtocols: 0,
         });
-      } else {
-        const existing = customerMap.get(customer.customerId);
-        if (customer.assignedAt && existing.firstAssignedAt && customer.assignedAt < existing.firstAssignedAt) {
-          existing.firstAssignedAt = customer.assignedAt;
-        }
+      }
+      
+      const customerData = customerMap.get(customer.customerId);
+      if (customer.status === 'active') {
+        customerData.activeProtocols++;
+      } else if (customer.status === 'completed') {
+        customerData.completedProtocols++;
       }
     });
     
     const customers = Array.from(customerMap.values());
-    res.json({ customers, total: customers.length });
+    res.json(customers);
   } catch (error) {
     console.error('Failed to fetch trainer customers:', error);
     res.status(500).json({ 
@@ -151,674 +128,329 @@ trainerRouter.get('/customers', requireAuth, requireRole('trainer'), async (req,
   }
 });
 
-// Get all meal plans assigned to a specific customer by this trainer
-trainerRouter.get('/customers/:customerId/meal-plans', requireAuth, requireRole('trainer'), async (req, res) => {
+// Get trainer's health protocols
+trainerRouter.get('/protocols', requireAuth, requireRole('trainer'), async (req, res) => {
   try {
     const trainerId = req.user!.id;
-    const { customerId } = req.params;
+    const protocols = await storage.getTrainerHealthProtocols(trainerId);
     
-    const mealPlans = await db.select()
-      .from(personalizedMealPlans)
-      .where(
-        and(
-          eq(personalizedMealPlans.trainerId, trainerId),
-          eq(personalizedMealPlans.customerId, customerId)
-        )
-      );
-    
-    res.json({ mealPlans, total: mealPlans.length });
-  } catch (error) {
-    console.error('Failed to fetch customer meal plans:', error);
-    res.status(500).json({ 
-      status: 'error',
-      message: 'Failed to fetch customer meal plans',
-      code: 'SERVER_ERROR'
-    });
-  }
-});
-
-// Get customer measurements (for trainer view)
-trainerRouter.get('/customers/:customerId/measurements', requireAuth, requireRole('trainer'), async (req, res) => {
-  try {
-    const trainerId = req.user!.id;
-    const { customerId } = req.params;
-    
-    // Verify the customer is assigned to this trainer
-    const customerAssignments = await db.select()
-      .from(personalizedMealPlans)
-      .where(
-        and(
-          eq(personalizedMealPlans.trainerId, trainerId),
-          eq(personalizedMealPlans.customerId, customerId)
-        )
-      )
-      .limit(1);
-    
-    if (customerAssignments.length === 0) {
-      return res.status(403).json({ 
-        status: 'error',
-        message: 'Not authorized to view this customer\'s data',
-        code: 'FORBIDDEN'
-      });
-    }
-    
-    const measurements = await db.select()
-      .from(progressMeasurements)
-      .where(eq(progressMeasurements.customerId, customerId))
-      .orderBy(desc(progressMeasurements.measurementDate));
-    
-    res.json({
-      status: 'success',
-      data: measurements,
-    });
-  } catch (error) {
-    console.error('Failed to fetch customer measurements:', error);
-    res.status(500).json({ 
-      status: 'error',
-      message: 'Failed to fetch customer measurements',
-      code: 'SERVER_ERROR'
-    });
-  }
-});
-
-// Get customer goals (for trainer view)
-trainerRouter.get('/customers/:customerId/goals', requireAuth, requireRole('trainer'), async (req, res) => {
-  try {
-    const trainerId = req.user!.id;
-    const { customerId } = req.params;
-    
-    // Verify the customer is assigned to this trainer
-    const customerAssignments = await db.select()
-      .from(personalizedMealPlans)
-      .where(
-        and(
-          eq(personalizedMealPlans.trainerId, trainerId),
-          eq(personalizedMealPlans.customerId, customerId)
-        )
-      )
-      .limit(1);
-    
-    if (customerAssignments.length === 0) {
-      return res.status(403).json({ 
-        status: 'error',
-        message: 'Not authorized to view this customer\'s data',
-        code: 'FORBIDDEN'
-      });
-    }
-    
-    const goals = await db.select()
-      .from(customerGoals)
-      .where(eq(customerGoals.customerId, customerId))
-      .orderBy(desc(customerGoals.createdAt));
-    
-    res.json({
-      status: 'success',
-      data: goals,
-    });
-  } catch (error) {
-    console.error('Failed to fetch customer goals:', error);
-    res.status(500).json({ 
-      status: 'error',
-      message: 'Failed to fetch customer goals',
-      code: 'SERVER_ERROR'
-    });
-  }
-});
-
-// Assign a new meal plan to a customer
-trainerRouter.post('/customers/:customerId/meal-plans', requireAuth, requireRole('trainer'), async (req, res) => {
-  try {
-    const trainerId = req.user!.id;
-    const { customerId } = req.params;
-    const { mealPlanData } = req.body;
-    
-    if (!mealPlanData) {
-      return res.status(400).json({ 
-        status: 'error',
-        message: 'Meal plan data is required',
-        code: 'INVALID_INPUT'
-      });
-    }
-    
-    // Verify customer exists
-    const customer = await db.select()
-      .from(users)
-      .where(and(eq(users.id, customerId), eq(users.role, 'customer')))
-      .limit(1);
-    
-    if (customer.length === 0) {
-      return res.status(404).json({ 
-        status: 'error',
-        message: 'Customer not found',
-        code: 'NOT_FOUND'
-      });
-    }
-    
-    // Create the meal plan assignment
-    const [newAssignment] = await db.insert(personalizedMealPlans)
-      .values({
-        customerId,
-        trainerId,
-        mealPlanData: mealPlanData as MealPlan,
-      })
-      .returning();
-    
-    res.status(201).json({ 
-      assignment: newAssignment,
-      message: 'Meal plan assigned successfully'
-    });
-  } catch (error) {
-    console.error('Failed to assign meal plan:', error);
-    res.status(500).json({ 
-      status: 'error',
-      message: 'Failed to assign meal plan',
-      code: 'SERVER_ERROR'
-    });
-  }
-});
-
-// Remove a meal plan assignment from customer
-trainerRouter.delete('/assigned-meal-plans/:planId', requireAuth, requireRole('trainer'), async (req, res) => {
-  try {
-    const trainerId = req.user!.id;
-    const { planId } = req.params;
-    
-    // Verify the meal plan belongs to this trainer
-    const mealPlan = await db.select()
-      .from(personalizedMealPlans)
-      .where(
-        and(
-          eq(personalizedMealPlans.id, planId),
-          eq(personalizedMealPlans.trainerId, trainerId)
-        )
-      )
-      .limit(1);
-    
-    if (mealPlan.length === 0) {
-      return res.status(404).json({ 
-        status: 'error',
-        message: 'Meal plan not found or not authorized',
-        code: 'NOT_FOUND'
-      });
-    }
-    
-    await db.delete(personalizedMealPlans)
-      .where(eq(personalizedMealPlans.id, planId));
-    
-    res.json({ message: 'Meal plan assignment removed successfully' });
-  } catch (error) {
-    console.error('Failed to remove meal plan assignment:', error);
-    res.status(500).json({ 
-      status: 'error',
-      message: 'Failed to remove meal plan assignment',
-      code: 'SERVER_ERROR'
-    });
-  }
-});
-
-// === Trainer Meal Plan Management Routes ===
-
-// Get all saved meal plans for the trainer
-trainerRouter.get('/meal-plans', requireAuth, requireRole('trainer'), async (req, res) => {
-  try {
-    const trainerId = req.user!.id;
-    const mealPlans = await storage.getTrainerMealPlans(trainerId);
-    
-    res.json({ 
-      mealPlans,
-      total: mealPlans.length 
-    });
-  } catch (error) {
-    console.error('Failed to fetch trainer meal plans:', error);
-    res.status(500).json({ 
-      status: 'error',
-      message: 'Failed to fetch meal plans',
-      code: 'SERVER_ERROR'
-    });
-  }
-});
-
-// Save a new meal plan to trainer's library
-const saveMealPlanSchema = z.object({
-  mealPlanData: z.any(), // MealPlan schema
-  notes: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-  isTemplate: z.boolean().optional(),
-});
-
-trainerRouter.post('/meal-plans', requireAuth, requireRole('trainer'), async (req, res) => {
-  try {
-    const trainerId = req.user!.id;
-    const { mealPlanData, notes, tags, isTemplate } = saveMealPlanSchema.parse(req.body);
-    
-    const savedPlan = await storage.createTrainerMealPlan({
-      trainerId,
-      mealPlanData,
-      notes,
-      tags,
-      isTemplate,
-    });
-    
-    res.status(201).json({ 
-      mealPlan: savedPlan,
-      message: 'Meal plan saved successfully'
-    });
-  } catch (error) {
-    console.error('Failed to save meal plan:', error);
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
-        status: 'error',
-        message: 'Invalid request data',
-        details: error.errors
-      });
-    }
-    res.status(500).json({ 
-      status: 'error',
-      message: 'Failed to save meal plan',
-      code: 'SERVER_ERROR'
-    });
-  }
-});
-
-// Get a specific meal plan
-trainerRouter.get('/meal-plans/:planId', requireAuth, requireRole('trainer'), async (req, res) => {
-  try {
-    const trainerId = req.user!.id;
-    const { planId } = req.params;
-    
-    const plan = await storage.getTrainerMealPlan(planId);
-    
-    if (!plan || plan.trainerId !== trainerId) {
-      return res.status(404).json({ 
-        status: 'error',
-        message: 'Meal plan not found',
-        code: 'NOT_FOUND'
-      });
-    }
-    
-    // Get assignments for this plan
-    const assignments = await storage.getMealPlanAssignments(planId);
-    
-    res.json({ 
-      mealPlan: {
-        ...plan,
-        assignments,
-        assignmentCount: assignments.length,
-      }
-    });
-  } catch (error) {
-    console.error('Failed to fetch meal plan:', error);
-    res.status(500).json({ 
-      status: 'error',
-      message: 'Failed to fetch meal plan',
-      code: 'SERVER_ERROR'
-    });
-  }
-});
-
-// Update a meal plan
-const updateMealPlanSchema = z.object({
-  mealPlanData: z.any().optional(),
-  notes: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-  isTemplate: z.boolean().optional(),
-});
-
-trainerRouter.put('/meal-plans/:planId', requireAuth, requireRole('trainer'), async (req, res) => {
-  try {
-    const trainerId = req.user!.id;
-    const { planId } = req.params;
-    const updates = updateMealPlanSchema.parse(req.body);
-    
-    // Verify ownership
-    const existing = await storage.getTrainerMealPlan(planId);
-    if (!existing || existing.trainerId !== trainerId) {
-      return res.status(404).json({ 
-        status: 'error',
-        message: 'Meal plan not found',
-        code: 'NOT_FOUND'
-      });
-    }
-    
-    const updated = await storage.updateTrainerMealPlan(planId, updates);
-    
-    res.json({ 
-      mealPlan: updated,
-      message: 'Meal plan updated successfully'
-    });
-  } catch (error) {
-    console.error('Failed to update meal plan:', error);
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
-        status: 'error',
-        message: 'Invalid request data',
-        details: error.errors
-      });
-    }
-    res.status(500).json({ 
-      status: 'error',
-      message: 'Failed to update meal plan',
-      code: 'SERVER_ERROR'
-    });
-  }
-});
-
-// Delete a saved meal plan
-trainerRouter.delete('/meal-plans/:planId', requireAuth, requireRole('trainer'), async (req, res) => {
-  try {
-    const trainerId = req.user!.id;
-    const { planId } = req.params;
-    
-    // Verify ownership
-    const existing = await storage.getTrainerMealPlan(planId);
-    if (!existing || existing.trainerId !== trainerId) {
-      return res.status(404).json({ 
-        status: 'error',
-        message: 'Meal plan not found',
-        code: 'NOT_FOUND'
-      });
-    }
-    
-    const deleted = await storage.deleteTrainerMealPlan(planId);
-    
-    if (!deleted) {
-      return res.status(404).json({ 
-        status: 'error',
-        message: 'Meal plan not found',
-        code: 'NOT_FOUND'
-      });
-    }
-    
-    res.json({ message: 'Meal plan deleted successfully' });
-  } catch (error) {
-    console.error('Failed to delete meal plan:', error);
-    res.status(500).json({ 
-      status: 'error',
-      message: 'Failed to delete meal plan',
-      code: 'SERVER_ERROR'
-    });
-  }
-});
-
-// Assign a saved meal plan to a customer
-const assignSavedMealPlanSchema = z.object({
-  customerId: z.string().uuid(),
-  notes: z.string().optional(),
-});
-
-trainerRouter.post('/meal-plans/:planId/assign', requireAuth, requireRole('trainer'), async (req, res) => {
-  try {
-    const trainerId = req.user!.id;
-    const { planId } = req.params;
-    const { customerId, notes } = assignSavedMealPlanSchema.parse(req.body);
-    
-    // Verify ownership of meal plan
-    const plan = await storage.getTrainerMealPlan(planId);
-    if (!plan || plan.trainerId !== trainerId) {
-      return res.status(404).json({ 
-        status: 'error',
-        message: 'Meal plan not found',
-        code: 'NOT_FOUND'
-      });
-    }
-    
-    // Verify customer exists
-    const customer = await storage.getUser(customerId);
-    if (!customer || customer.role !== 'customer') {
-      return res.status(404).json({ 
-        status: 'error',
-        message: 'Customer not found',
-        code: 'NOT_FOUND'
-      });
-    }
-    
-    // Create assignment
-    const assignment = await storage.assignMealPlanToCustomer(planId, customerId, trainerId, notes);
-    
-    // Also create a personalized meal plan record for backward compatibility
-    await storage.assignMealPlanToCustomers(trainerId, plan.mealPlanData as MealPlan, [customerId]);
-    
-    res.status(201).json({ 
-      assignment,
-      message: 'Meal plan assigned successfully'
-    });
-  } catch (error) {
-    console.error('Failed to assign meal plan:', error);
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
-        status: 'error',
-        message: 'Invalid request data',
-        details: error.errors
-      });
-    }
-    res.status(500).json({ 
-      status: 'error',
-      message: 'Failed to assign meal plan',
-      code: 'SERVER_ERROR'
-    });
-  }
-});
-
-// Unassign a meal plan from a customer
-trainerRouter.delete('/meal-plans/:planId/assign/:customerId', requireAuth, requireRole('trainer'), async (req, res) => {
-  try {
-    const trainerId = req.user!.id;
-    const { planId, customerId } = req.params;
-    
-    // Verify ownership of meal plan
-    const plan = await storage.getTrainerMealPlan(planId);
-    if (!plan || plan.trainerId !== trainerId) {
-      return res.status(404).json({ 
-        status: 'error',
-        message: 'Meal plan not found',
-        code: 'NOT_FOUND'
-      });
-    }
-    
-    const unassigned = await storage.unassignMealPlanFromCustomer(planId, customerId);
-    
-    if (!unassigned) {
-      return res.status(404).json({ 
-        status: 'error',
-        message: 'Assignment not found',
-        code: 'NOT_FOUND'
-      });
-    }
-    
-    res.json({ message: 'Meal plan unassigned successfully' });
-  } catch (error) {
-    console.error('Failed to unassign meal plan:', error);
-    res.status(500).json({ 
-      status: 'error',
-      message: 'Failed to unassign meal plan',
-      code: 'SERVER_ERROR'
-    });
-  }
-});
-
-// === Health Protocol Management Routes ===
-
-// Get all health protocols created by this trainer
-trainerRouter.get('/health-protocols', requireAuth, requireRole('trainer'), async (req, res) => {
-  try {
-    const trainerId = req.user!.id;
-    
-    const protocols = await db.select()
-      .from(trainerHealthProtocols)
-      .where(eq(trainerHealthProtocols.trainerId, trainerId))
-      .orderBy(desc(trainerHealthProtocols.createdAt));
-
-    // Get assignment counts for each protocol
-    const protocolsWithAssignments = await Promise.all(
+    // Add assignment count for each protocol
+    const protocolsWithStats = await Promise.all(
       protocols.map(async (protocol) => {
-        const assignments = await db.select()
-          .from(protocolAssignments)
-          .where(eq(protocolAssignments.protocolId, protocol.id));
-        
+        const assignments = await storage.getProtocolAssignments(protocol.id);
         return {
           ...protocol,
-          assignedClients: assignments.map(assignment => ({
-            id: assignment.customerId,
-            assignedAt: assignment.assignedAt,
-            status: assignment.status,
-          })),
+          totalAssignments: assignments.length,
+          activeAssignments: assignments.filter(a => a.status === 'active').length,
         };
       })
     );
-
-    res.json(protocolsWithAssignments);
+    
+    res.json(protocolsWithStats);
   } catch (error) {
-    console.error('Failed to fetch trainer health protocols:', error);
-    res.status(500).json({
+    console.error('Failed to fetch trainer protocols:', error);
+    res.status(500).json({ 
       status: 'error',
-      message: 'Failed to fetch health protocols',
+      message: 'Failed to fetch protocols',
       code: 'SERVER_ERROR'
     });
   }
 });
 
 // Create a new health protocol
-trainerRouter.post('/health-protocols', requireAuth, requireRole('trainer'), async (req, res) => {
-  const startTime = Date.now();
-  console.log(`[Health Protocol] Starting creation request for trainer ID: ${req.user?.id}`);
-  console.log(`[Health Protocol] Request body size: ${JSON.stringify(req.body).length} bytes`);
-  
+trainerRouter.post('/protocols', requireAuth, requireRole('trainer'), async (req, res) => {
   try {
     const trainerId = req.user!.id;
-    
-    // Log received data structure for debugging
-    console.log(`[Health Protocol] Received protocol type: ${req.body?.type}, name: "${req.body?.name}"`);
-    console.log(`[Health Protocol] Config keys: ${req.body?.config ? Object.keys(req.body.config) : 'none'}`);
-    
     const protocolData = createHealthProtocolSchema.parse(req.body);
-    console.log(`[Health Protocol] Validation passed, inserting into database...`);
-
-    const [newProtocol] = await db.insert(trainerHealthProtocols)
-      .values({
-        trainerId,
-        name: protocolData.name,
-        description: protocolData.description,
-        type: protocolData.type,
-        duration: protocolData.duration,
-        intensity: protocolData.intensity,
-        config: protocolData.config,
-        tags: protocolData.tags || [],
-      })
-      .returning();
-
-    const duration = Date.now() - startTime;
-    console.log(`[Health Protocol] Successfully created protocol ID: ${newProtocol.id} in ${duration}ms`);
-
-    res.status(201).json({
-      protocol: newProtocol,
-      message: 'Health protocol created successfully'
-    });
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`[Health Protocol] Failed after ${duration}ms:`, error);
     
+    const protocol = await storage.createHealthProtocol({
+      ...protocolData,
+      trainerId,
+    });
+    
+    res.status(201).json(protocol);
+  } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error(`[Health Protocol] Validation errors:`, error.errors);
-      return res.status(400).json({
+      return res.status(400).json({ 
         status: 'error',
-        message: 'Invalid request data',
-        details: error.errors,
-        code: 'VALIDATION_ERROR'
+        message: 'Invalid protocol data',
+        errors: error.errors
       });
     }
-    
-    // Check for database specific errors
-    if (error && typeof error === 'object' && 'code' in error) {
-      console.error(`[Health Protocol] Database error code: ${(error as any).code}`);
-      console.error(`[Health Protocol] Database error detail: ${(error as any).detail}`);
-    }
-    
-    res.status(500).json({
+    console.error('Failed to create protocol:', error);
+    res.status(500).json({ 
       status: 'error',
-      message: 'Failed to create health protocol',
-      code: 'SERVER_ERROR',
-      ...(process.env.NODE_ENV === 'development' && { 
-        debug: error instanceof Error ? error.message : String(error) 
-      })
+      message: 'Failed to create protocol',
+      code: 'SERVER_ERROR'
     });
   }
 });
 
-// Assign protocol to clients
-trainerRouter.post('/health-protocols/assign', requireAuth, requireRole('trainer'), async (req, res) => {
+// Generate a health protocol using AI
+trainerRouter.post('/protocols/generate', requireAuth, requireRole('trainer'), async (req, res) => {
   try {
     const trainerId = req.user!.id;
-    const assignmentData = assignProtocolSchema.parse(req.body);
-
-    // Verify the protocol belongs to this trainer
-    const protocol = await db.select()
-      .from(trainerHealthProtocols)
-      .where(
-        and(
-          eq(trainerHealthProtocols.id, assignmentData.protocolId),
-          eq(trainerHealthProtocols.trainerId, trainerId)
-        )
-      )
-      .limit(1);
-
-    if (protocol.length === 0) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Protocol not found or not authorized',
-        code: 'NOT_FOUND'
-      });
-    }
-
-    // Verify all clients exist and are customers
-    const clients = await db.select()
-      .from(users)
-      .where(
-        and(
-          inArray(users.id, assignmentData.clientIds),
-          eq(users.role, 'customer')
-        )
-      );
-
-    if (clients.length !== assignmentData.clientIds.length) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'One or more clients not found',
-        code: 'INVALID_CLIENTS'
-      });
-    }
-
-    // Create assignments for each client
-    const assignments = assignmentData.clientIds.map(clientId => ({
-      protocolId: assignmentData.protocolId,
-      customerId: clientId,
+    const {
+      protocolType,
+      intensity,
+      duration,
+      userAge,
+      healthConditions,
+      currentMedications,
+      experience,
+      specificGoals,
+      naturalLanguagePrompt
+    } = req.body;
+    
+    const generatedProtocol = await generateHealthProtocol({
+      protocolType,
+      intensity,
+      duration,
+      userAge,
+      healthConditions,
+      currentMedications,
+      experience,
+      specificGoals,
+      naturalLanguagePrompt
+    });
+    
+    // Save the generated protocol
+    const protocol = await storage.createHealthProtocol({
+      name: generatedProtocol.name,
+      description: generatedProtocol.description,
+      type: generatedProtocol.type,
+      duration: generatedProtocol.duration,
+      intensity: generatedProtocol.intensity,
+      config: generatedProtocol.config,
+      tags: generatedProtocol.tags,
       trainerId,
-      startDate: assignmentData.startDate ? new Date(assignmentData.startDate) : new Date(),
-      notes: assignmentData.notes || null,
-    }));
-
-    const createdAssignments = await db.insert(protocolAssignments)
-      .values(assignments)
-      .returning();
-
-    res.status(201).json({
-      assignments: createdAssignments,
-      message: `Protocol assigned to ${assignments.length} client(s) successfully`
+    });
+    
+    res.json({
+      protocol,
+      aiRecommendations: generatedProtocol.recommendations,
     });
   } catch (error) {
-    console.error('Failed to assign protocol:', error);
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
+    console.error('Failed to generate protocol:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to generate protocol',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Parse natural language input for protocol creation
+trainerRouter.post('/protocols/parse-language', requireAuth, requireRole('trainer'), async (req, res) => {
+  try {
+    const { naturalLanguageInput } = req.body;
+    
+    if (!naturalLanguageInput || typeof naturalLanguageInput !== 'string') {
+      return res.status(400).json({ 
         status: 'error',
-        message: 'Invalid request data',
-        details: error.errors
+        message: 'Natural language input is required' 
       });
     }
-    res.status(500).json({
+    
+    const parsedData = await parseNaturalLanguageForHealthProtocol(naturalLanguageInput);
+    res.json(parsedData);
+  } catch (error) {
+    console.error('Failed to parse natural language:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to parse natural language input',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Update a health protocol
+trainerRouter.put('/protocols/:id', requireAuth, requireRole('trainer'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const trainerId = req.user!.id;
+    const updates = req.body;
+    
+    // Verify ownership
+    const existingProtocol = await storage.getHealthProtocol(id);
+    if (!existingProtocol || existingProtocol.trainerId !== trainerId) {
+      return res.status(404).json({ 
+        status: 'error',
+        message: 'Protocol not found or access denied' 
+      });
+    }
+    
+    const updatedProtocol = await storage.updateHealthProtocol(id, updates);
+    res.json(updatedProtocol);
+  } catch (error) {
+    console.error('Failed to update protocol:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to update protocol',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Delete a health protocol
+trainerRouter.delete('/protocols/:id', requireAuth, requireRole('trainer'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const trainerId = req.user!.id;
+    
+    // Verify ownership
+    const existingProtocol = await storage.getHealthProtocol(id);
+    if (!existingProtocol || existingProtocol.trainerId !== trainerId) {
+      return res.status(404).json({ 
+        status: 'error',
+        message: 'Protocol not found or access denied' 
+      });
+    }
+    
+    const deleted = await storage.deleteHealthProtocol(id);
+    if (deleted) {
+      res.json({ message: 'Protocol deleted successfully' });
+    } else {
+      res.status(500).json({ 
+        status: 'error',
+        message: 'Failed to delete protocol' 
+      });
+    }
+  } catch (error) {
+    console.error('Failed to delete protocol:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to delete protocol',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Assign protocol to customers
+trainerRouter.post('/protocols/:id/assign', requireAuth, requireRole('trainer'), async (req, res) => {
+  try {
+    const { id: protocolId } = req.params;
+    const { clientIds, notes, startDate } = assignProtocolSchema.parse(req.body);
+    const trainerId = req.user!.id;
+    
+    // Verify protocol ownership
+    const protocol = await storage.getHealthProtocol(protocolId);
+    if (!protocol || protocol.trainerId !== trainerId) {
+      return res.status(404).json({ 
+        status: 'error',
+        message: 'Protocol not found or access denied' 
+      });
+    }
+    
+    // Create assignments for each client
+    const assignments = [];
+    for (const clientId of clientIds) {
+      const assignment = await storage.assignProtocolToCustomer({
+        protocolId,
+        customerId: clientId,
+        trainerId,
+        notes,
+        status: 'active',
+        startDate: startDate ? new Date(startDate) : new Date(),
+        endDate: new Date(Date.now() + protocol.duration * 24 * 60 * 60 * 1000), // Add duration in days
+      });
+      assignments.push(assignment);
+    }
+    
+    res.json({ 
+      message: `Protocol assigned to ${clientIds.length} client(s)`,
+      assignments 
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        status: 'error',
+        message: 'Invalid assignment data',
+        errors: error.errors
+      });
+    }
+    console.error('Failed to assign protocol:', error);
+    res.status(500).json({ 
       status: 'error',
       message: 'Failed to assign protocol',
       code: 'SERVER_ERROR'
     });
   }
+});
+
+// Get protocol assignments for this trainer
+trainerRouter.get('/protocol-assignments', requireAuth, requireRole('trainer'), async (req, res) => {
+  try {
+    const trainerId = req.user!.id;
+    const assignments = await storage.getTrainerProtocolAssignments(trainerId);
+    res.json(assignments);
+  } catch (error) {
+    console.error('Failed to fetch protocol assignments:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to fetch assignments',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Get customer details for trainer
+trainerRouter.get('/customers/:customerId', requireAuth, requireRole('trainer'), async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const trainerId = req.user!.id;
+    
+    // Get customer basic info
+    const customer = await storage.getUser(customerId);
+    if (!customer) {
+      return res.status(404).json({ 
+        status: 'error',
+        message: 'Customer not found' 
+      });
+    }
+    
+    // Get customer's protocol assignments from this trainer
+    const assignments = await storage.getCustomerProtocolAssignments(customerId);
+    const trainerAssignments = assignments.filter(a => a.trainerId === trainerId);
+    
+    // Get customer's progress measurements
+    const measurements = await storage.getProgressMeasurements(customerId);
+    
+    // Get customer's goals
+    const goals = await storage.getCustomerGoals(customerId);
+    
+    res.json({
+      customer: {
+        id: customer.id,
+        email: customer.email,
+        name: customer.name,
+        profilePicture: customer.profilePicture,
+      },
+      protocolAssignments: trainerAssignments,
+      progressMeasurements: measurements.slice(0, 10), // Last 10 measurements
+      goals: goals.filter(g => g.status === 'active'),
+    });
+  } catch (error) {
+    console.error('Failed to fetch customer details:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to fetch customer details',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Handle removed meal plan endpoints
+trainerRouter.all('/meal-plans*', (req, res) => {
+  res.status(404).json({ 
+    message: 'Meal plan endpoints have been removed. This application now focuses on health protocols.' 
+  });
+});
+
+trainerRouter.all('/recipes*', (req, res) => {
+  res.status(404).json({ 
+    message: 'Recipe endpoints have been removed. This application now focuses on health protocols.' 
+  });
 });
 
 export default trainerRouter;

@@ -14,7 +14,6 @@ import {
 import { useToast } from '../hooks/use-toast';
 import { apiRequest } from '../lib/queryClient';
 import { SimplePDFExportButton } from './PDFExportButton';
-import MealPlanGenerator from './MealPlanGenerator';
 import { 
   User, 
   Target, 
@@ -30,7 +29,6 @@ import {
   FileText,
   Zap
 } from 'lucide-react';
-import type { MealPlan } from '@shared/schema';
 
 interface Customer {
   id: string;
@@ -38,13 +36,7 @@ interface Customer {
   firstAssignedAt: string;
 }
 
-interface CustomerMealPlan {
-  id: string;
-  customerId: string;
-  trainerId: string;
-  mealPlanData: MealPlan;
-  assignedAt: string;
-}
+// CustomerMealPlan interface removed - meal plan functionality deprecated
 
 interface ProgressMeasurement {
   id: string;

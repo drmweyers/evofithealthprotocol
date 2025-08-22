@@ -1,90 +1,56 @@
 /**
  * PDF Export Controller
  * 
- * Handles server-side PDF generation using Puppeteer
+ * Handles server-side PDF generation for health protocols using Puppeteer
  * Implements EvoFit brand styling and layout
  */
 
 import { Request, Response } from 'express';
 import puppeteer, { Browser } from 'puppeteer';
 import dayjs from 'dayjs';
-import { compileHtmlTemplate, type MealPlanPdfData } from '../utils/pdfTemplate';
-import { validateMealPlanData } from '../utils/pdfValidation';
-import { storage } from '../storage';
+import { validateProtocolForPDF } from '../utils/pdfValidation';
 
 interface ExportOptions {
-  includeShoppingList?: boolean;
-  includeMacroSummary?: boolean;
-  includeRecipePhotos?: boolean;
+  includeSupplements?: boolean;
+  includeGuidelines?: boolean;
+  includePrecautions?: boolean;
   orientation?: 'portrait' | 'landscape';
   pageSize?: 'A4' | 'Letter';
 }
 
-interface PdfExportRequest extends Request {
+interface ProtocolPdfExportRequest extends Request {
   body: {
-    mealPlanData: any;
+    protocolData: any;
     customerName?: string;
     options?: ExportOptions;
   };
 }
 
 /**
- * Export meal plan data to PDF
+ * Export health protocol data to PDF
  */
-export async function exportPdfController(req: PdfExportRequest, res: Response): Promise<void> {
+export async function exportProtocolPdfController(req: ProtocolPdfExportRequest, res: Response): Promise<void> {
   let browser: Browser | null = null;
   
   try {
     // Validate request data
-    const { mealPlanData, customerName, options = {} } = req.body;
+    const { protocolData, customerName, options = {} } = req.body;
     
-    if (!mealPlanData) {
+    if (!protocolData) {
       res.status(400).json({ 
         status: 'error', 
-        message: 'Meal plan data is required',
-        code: 'MISSING_MEAL_PLAN_DATA'
+        message: 'Protocol data is required',
+        code: 'MISSING_PROTOCOL_DATA'
       });
       return;
     }
 
-    // Validate and transform meal plan data
-    const validatedData = await validateMealPlanData(mealPlanData);
+    // Validate and transform protocol data
+    const validatedProtocol = validateProtocolForPDF(protocolData);
     
-    // Set default options
-    const exportOptions: ExportOptions = {
-      includeShoppingList: true,
-      includeMacroSummary: true,
-      includeRecipePhotos: false, // Disabled for performance
-      orientation: 'portrait',
-      pageSize: 'A4',
-      ...options
-    };
-
-    // Prepare data for template
-    const templateData: MealPlanPdfData = {
-      mealPlan: validatedData,
-      customerName: customerName || 'Valued Client',
-      generatedDate: dayjs().format('MMMM D, YYYY'),
-      generatedBy: (req.user as any)?.email || 'EvoFit Trainer',
-      options: exportOptions,
-      brandInfo: {
-        name: 'EvoFit Meals',
-        tagline: 'Transform Your Nutrition, Transform Your Life',
-        website: 'www.evofit.com',
-        colors: {
-          primary: '#EB5757',
-          accent: '#27AE60',
-          text: '#333333',
-          grey: '#F2F2F2'
-        }
-      }
-    };
-
-    // Generate HTML from template
-    const html = await compileHtmlTemplate(templateData);
-
-    // Launch Puppeteer browser
+    // Launch browser
     browser = await puppeteer.launch({
+      headless: true,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -93,175 +59,243 @@ export async function exportPdfController(req: PdfExportRequest, res: Response):
         '--no-first-run',
         '--no-zygote',
         '--disable-gpu'
-      ],
-      headless: true
+      ]
     });
 
     const page = await browser.newPage();
     
-    // Set viewport for consistent rendering
-    await page.setViewport({ width: 1200, height: 1600 });
+    // Generate HTML content for the protocol
+    const htmlContent = generateProtocolHtml(validatedProtocol, customerName, options);
     
-    // Set content and wait for resources to load
-    await page.setContent(html, { 
-      waitUntil: ['networkidle0', 'domcontentloaded'],
-      timeout: 30000
-    });
-
-    // Generate PDF with optimal settings
-    const pdf = await page.pdf({
-      format: exportOptions.pageSize as any,
+    // Set content and configure PDF options
+    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+    
+    const pdfOptions = {
+      format: options.pageSize || 'A4' as const,
+      orientation: options.orientation || 'portrait' as const,
       printBackground: true,
-      margin: { 
-        top: '20mm', 
-        bottom: '20mm', 
-        left: '24mm', 
-        right: '24mm' 
-      },
-      preferCSSPageSize: true,
-      displayHeaderFooter: false
-    });
+      margin: {
+        top: '20mm',
+        right: '15mm',
+        bottom: '20mm',
+        left: '15mm'
+      }
+    };
 
-    await browser.close();
-    browser = null;
-
-    // Generate filename
-    const safeCustomerName = (customerName || 'meal-plan')
-      .replace(/[^a-z0-9]/gi, '_')
-      .toLowerCase();
-    const timestamp = dayjs().format('YYYY-MM-DD');
-    const filename = `EvoFit_Meal_Plan_${safeCustomerName}_${timestamp}.pdf`;
-
+    // Generate PDF
+    const pdfBuffer = await page.pdf(pdfOptions);
+    
     // Set response headers
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Length': pdf.length.toString(),
-      'Content-Disposition': `attachment; filename="${filename}"`,
-      'Cache-Control': 'private, no-cache, no-store, must-revalidate',
-      'Expires': '-1',
-      'Pragma': 'no-cache'
-    });
-
-    // Send PDF as binary data
-    res.end(pdf);
-
-  } catch (error) {
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="protocol-${validatedProtocol.name.replace(/\s+/g, '-').toLowerCase()}-${dayjs().format('YYYY-MM-DD')}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    
+    // Send PDF
+    res.send(pdfBuffer);
+    
+  } catch (error: any) {
     console.error('PDF export error:', error);
     
-    // Ensure browser is closed on error
-    if (browser) {
-      try {
-        await browser.close();
-      } catch (closeError) {
-        console.error('Error closing browser:', closeError);
-      }
-    }
-
-    // Return error response
     if (!res.headersSent) {
       res.status(500).json({
         status: 'error',
         message: 'Failed to generate PDF',
-        code: 'PDF_GENERATION_FAILED',
-        details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+        code: 'PDF_GENERATION_ERROR',
+        details: error.message
       });
+    }
+  } finally {
+    if (browser) {
+      await browser.close();
     }
   }
 }
 
 /**
- * Export specific meal plan by ID to PDF
+ * Generate HTML content for health protocol PDF
  */
-export async function exportMealPlanPdfController(req: Request, res: Response): Promise<void> {
-  try {
-    const { planId } = req.params;
-    const userId = req.user!.id;
-    const userRole = req.user!.role;
-
-    // Get meal plan data from database
-    let mealPlan;
-    
-    if (userRole === 'admin') {
-      // Admin can access any meal plan - we need to implement this in storage
-      // For now, return error as this requires additional storage methods
-      res.status(501).json({
-        status: 'error',
-        message: 'Admin meal plan access not yet implemented',
-        code: 'NOT_IMPLEMENTED'
-      });
-      return;
-    } else if (userRole === 'trainer') {
-      // Get trainer's customers and their meal plans
-      const customers = await (storage as any).getTrainerCustomers?.(userId);
-      if (!customers) {
-        res.status(404).json({
-          status: 'error',
-          message: 'No customers found',
-          code: 'NO_CUSTOMERS'
-        });
-        return;
-      }
-
-      // Find the meal plan among trainer's customers
-      let foundPlan = null;
-      let customerName = '';
-      
-      for (const customer of customers) {
-        const customerMealPlans = await storage.getPersonalizedMealPlans(customer.id);
-        const targetPlan = customerMealPlans.find((plan: any) => plan.id === planId);
-        if (targetPlan) {
-          foundPlan = targetPlan;
-          customerName = customer.email;
-          break;
+function generateProtocolHtml(protocol: any, customerName?: string, options: ExportOptions = {}): string {
+  const currentDate = dayjs().format('MMMM D, YYYY');
+  
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${protocol.name} - Health Protocol</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background: #fff;
         }
-      }
-
-      if (!foundPlan) {
-        res.status(404).json({
-          status: 'error',
-          message: 'Meal plan not found or access denied',
-          code: 'MEAL_PLAN_NOT_FOUND'
-        });
-        return;
-      }
-
-      mealPlan = foundPlan;
-    } else {
-      // Customer access - get their own meal plans
-      const customerMealPlans = await storage.getPersonalizedMealPlans(userId);
-      const targetPlan = customerMealPlans.find((plan: any) => plan.id === planId);
-      
-      if (!targetPlan) {
-        res.status(404).json({
-          status: 'error',
-          message: 'Meal plan not found',
-          code: 'MEAL_PLAN_NOT_FOUND'
-        });
-        return;
-      }
-
-      mealPlan = targetPlan;
-    }
-
-    // Use the main export controller with the found meal plan
-    req.body = {
-      mealPlanData: mealPlan,
-      customerName: (req.user as any)?.email,
-      options: req.body.options || {}
-    };
-
-    await exportPdfController(req as PdfExportRequest, res);
-
-  } catch (error) {
-    console.error('Meal plan PDF export error:', error);
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .content {
+            padding: 0 30px;
+        }
+        
+        .protocol-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .supplement-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .supplement-card {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .supplement-name {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        
+        .guideline-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            border-left: 3px solid #28a745;
+        }
+        
+        .precaution-item {
+            background: #fff3cd;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 3px solid #ffc107;
+        }
+        
+        .footer {
+            margin-top: 50px;
+            padding: 20px;
+            background: #f8f9fa;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #ddd;
+        }
+        
+        @media print {
+            .header {
+                background: #667eea !important;
+                -webkit-print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>EvoFit Health Protocol</h1>
+        <p>Personalized Health & Wellness Program</p>
+    </div>
     
-    if (!res.headersSent) {
-      res.status(500).json({
-        status: 'error',
-        message: 'Failed to export meal plan PDF',
-        code: 'EXPORT_FAILED',
-        details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
-      });
-    }
-  }
+    <div class="content">
+        <div class="protocol-info">
+            <h2 style="margin-top: 0; border: none; color: #333;">${protocol.name}</h2>
+            ${customerName ? `<p><strong>Prepared for:</strong> ${customerName}</p>` : ''}
+            <p><strong>Protocol Type:</strong> ${protocol.type.replace('_', ' ').toUpperCase()}</p>
+            <p><strong>Duration:</strong> ${protocol.duration}</p>
+            <p><strong>Generated:</strong> ${currentDate}</p>
+            ${protocol.description ? `<p><strong>Description:</strong> ${protocol.description}</p>` : ''}
+        </div>
+        
+        ${options.includeSupplements !== false && protocol.supplements?.length > 0 ? `
+        <div class="section">
+            <h2>Supplements & Dosages</h2>
+            <div class="supplement-grid">
+                ${protocol.supplements.map((supplement: any) => `
+                    <div class="supplement-card">
+                        <div class="supplement-name">${supplement.name}</div>
+                        <p><strong>Dosage:</strong> ${supplement.dosage}</p>
+                        <p><strong>Timing:</strong> ${supplement.timing}</p>
+                        ${supplement.notes ? `<p><strong>Notes:</strong> ${supplement.notes}</p>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        ` : ''}
+        
+        ${options.includeGuidelines !== false && protocol.guidelines?.length > 0 ? `
+        <div class="section">
+            <h2>Guidelines & Recommendations</h2>
+            ${protocol.guidelines.map((guideline: any) => `
+                <div class="guideline-item">
+                    <strong>${guideline.category}:</strong> ${guideline.instruction}
+                </div>
+            `).join('')}
+        </div>
+        ` : ''}
+        
+        ${options.includePrecautions !== false && protocol.precautions?.length > 0 ? `
+        <div class="section">
+            <h2>Important Precautions</h2>
+            ${protocol.precautions.map((precaution: string) => `
+                <div class="precaution-item">
+                    ${precaution}
+                </div>
+            `).join('')}
+        </div>
+        ` : ''}
+    </div>
+    
+    <div class="footer">
+        <p>© 2025 EvoFit Health Solutions - Generated by Health Protocol Management System</p>
+        <p><em>This protocol is for informational purposes only. Consult with a healthcare professional before starting any new supplement regimen.</em></p>
+    </div>
+</body>
+</html>
+  `;
 }
+
+// Backward compatibility export
+export const exportPdfController = exportProtocolPdfController;

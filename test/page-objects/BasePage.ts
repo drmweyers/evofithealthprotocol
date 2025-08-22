@@ -9,7 +9,7 @@ export class BasePage {
   protected page: Page;
   protected baseUrl: string;
 
-  constructor(page: Page, baseUrl: string = 'http://localhost:4000') {
+  constructor(page: Page, baseUrl: string = 'http://localhost:3500') {
     this.page = page;
     this.baseUrl = baseUrl;
   }

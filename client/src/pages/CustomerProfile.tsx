@@ -27,10 +27,10 @@ import {
 } from 'lucide-react';
 
 interface CustomerStats {
-  totalMealPlans: number;
-  completedDays: number;
-  favoriteRecipes: number;
-  avgCaloriesPerDay: number;
+  totalProtocols: number;
+  activeProtocols: number;
+  completedProtocols: number;
+  protocolProgress: number;
   currentStreak: number;
 }
 
@@ -40,9 +40,9 @@ interface CustomerProfile {
   role: string;
   createdAt: string;
   lastLoginAt?: string;
-  fitnessGoals?: string[];
-  dietaryRestrictions?: string[];
-  preferredCuisines?: string[];
+  healthGoals?: string[];
+  medicalConditions?: string[];
+  supplements?: string[];
   activityLevel?: string;
   weight?: number;
   height?: number;
@@ -59,19 +59,19 @@ const activityLevels = [
   { value: 'extremely_active', label: 'Extremely Active (very hard exercise, physical job)' }
 ];
 
-const commonFitnessGoals = [
-  'Weight Loss', 'Muscle Gain', 'Maintenance', 'Athletic Performance', 
-  'General Health', 'Cutting', 'Bulking', 'Endurance'
+const commonHealthGoals = [
+  'Longevity', 'Parasite Cleanse', 'Detoxification', 'Immune Support', 
+  'Energy Optimization', 'Digestive Health', 'Mental Clarity', 'Cellular Health'
 ];
 
-const commonDietaryRestrictions = [
-  'Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Keto', 
-  'Paleo', 'Low-Carb', 'Low-Fat', 'Nut-Free', 'Soy-Free'
+const commonMedicalConditions = [
+  'Diabetes', 'Hypertension', 'Autoimmune', 'Digestive Issues', 'Allergies', 
+  'Chronic Fatigue', 'Inflammation', 'Metabolic Syndrome', 'Hormonal Imbalance', 'Stress'
 ];
 
-const commonCuisines = [
-  'Italian', 'Mexican', 'Asian', 'Mediterranean', 'American', 
-  'Indian', 'Thai', 'French', 'Japanese', 'Greek'
+const commonSupplements = [
+  'Multivitamin', 'Omega-3', 'Probiotics', 'Vitamin D', 'Magnesium', 
+  'B-Complex', 'Zinc', 'Vitamin C', 'Turmeric', 'NAD+'
 ];
 
 export default function CustomerProfile() {
@@ -82,9 +82,9 @@ export default function CustomerProfile() {
   const [editForm, setEditForm] = useState({
     email: user?.email || '',
     bio: '',
-    fitnessGoals: '',
-    dietaryRestrictions: '',
-    preferredCuisines: '',
+    healthGoals: '',
+    medicalConditions: '',
+    supplements: '',
     activityLevel: '',
     weight: '',
     height: '',
@@ -120,9 +120,9 @@ export default function CustomerProfile() {
       setEditForm(prev => ({
         ...prev,
         bio: profile.bio || '',
-        fitnessGoals: profile.fitnessGoals?.join(', ') || '',
-        dietaryRestrictions: profile.dietaryRestrictions?.join(', ') || '',
-        preferredCuisines: profile.preferredCuisines?.join(', ') || '',
+        healthGoals: profile.healthGoals?.join(', ') || '',
+        medicalConditions: profile.medicalConditions?.join(', ') || '',
+        supplements: profile.supplements?.join(', ') || '',
         activityLevel: profile.activityLevel || '',
         weight: profile.weight?.toString() || '',
         height: profile.height?.toString() || '',
@@ -175,16 +175,16 @@ export default function CustomerProfile() {
       updateData.bio = editForm.bio;
     }
     
-    if (editForm.fitnessGoals !== (profile?.fitnessGoals?.join(', ') || '')) {
-      updateData.fitnessGoals = editForm.fitnessGoals.split(',').map(s => s.trim()).filter(s => s);
+    if (editForm.healthGoals !== (profile?.healthGoals?.join(', ') || '')) {
+      updateData.healthGoals = editForm.healthGoals.split(',').map(s => s.trim()).filter(s => s);
     }
     
-    if (editForm.dietaryRestrictions !== (profile?.dietaryRestrictions?.join(', ') || '')) {
-      updateData.dietaryRestrictions = editForm.dietaryRestrictions.split(',').map(s => s.trim()).filter(s => s);
+    if (editForm.medicalConditions !== (profile?.medicalConditions?.join(', ') || '')) {
+      updateData.medicalConditions = editForm.medicalConditions.split(',').map(s => s.trim()).filter(s => s);
     }
     
-    if (editForm.preferredCuisines !== (profile?.preferredCuisines?.join(', ') || '')) {
-      updateData.preferredCuisines = editForm.preferredCuisines.split(',').map(s => s.trim()).filter(s => s);
+    if (editForm.supplements !== (profile?.supplements?.join(', ') || '')) {
+      updateData.supplements = editForm.supplements.split(',').map(s => s.trim()).filter(s => s);
     }
     
     if (editForm.activityLevel !== (profile?.activityLevel || '')) {
@@ -228,9 +228,9 @@ export default function CustomerProfile() {
     setEditForm({
       email: user?.email || '',
       bio: profile?.bio || '',
-      fitnessGoals: profile?.fitnessGoals?.join(', ') || '',
-      dietaryRestrictions: profile?.dietaryRestrictions?.join(', ') || '',
-      preferredCuisines: profile?.preferredCuisines?.join(', ') || '',
+      healthGoals: profile?.healthGoals?.join(', ') || '',
+      medicalConditions: profile?.medicalConditions?.join(', ') || '',
+      supplements: profile?.supplements?.join(', ') || '',
       activityLevel: profile?.activityLevel || '',
       weight: profile?.weight?.toString() || '',
       height: profile?.height?.toString() || '',
@@ -274,17 +274,17 @@ export default function CustomerProfile() {
       {/* Header */}
       <div className="mb-6 sm:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 mb-4">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
             <Heart className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 truncate">My Profile</h1>
-            <p className="text-sm sm:text-base text-slate-600">Manage your fitness journey and preferences</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 truncate">My Health Profile</h1>
+            <p className="text-sm sm:text-base text-slate-600">Manage your health journey and protocol preferences</p>
           </div>
         </div>
-        <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200 text-xs sm:text-sm">
+        <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 text-xs sm:text-sm">
           <Heart className="w-3 h-3 mr-1" />
-          Fitness Enthusiast
+          Health Optimizer
         </Badge>
       </div>
 

@@ -7,7 +7,7 @@
  */
 
 import jsPDF from 'jspdf';
-import type { MealPlan } from '@shared/schema';
+// MealPlan type removed - using local interfaces instead
 
 interface RecipeCardData {
   recipeName: string;

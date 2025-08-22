@@ -1,9 +1,17 @@
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { storage } from '../storage';
-import { eq, sql } from 'drizzle-orm';
-import { personalizedRecipes, personalizedMealPlans } from '@shared/schema';
+import { eq, sql, and } from 'drizzle-orm';
+import { 
+  protocolAssignments, 
+  progressMeasurements, 
+  customerGoals,
+  createMeasurementSchema,
+  createGoalSchema,
+  uploadProgressPhotoSchema 
+} from '@shared/schema';
 import { db } from '../db';
+import { z } from 'zod';
 
 const customerRouter = Router();
 
@@ -12,45 +20,64 @@ customerRouter.get('/profile/stats', requireAuth, requireRole('customer'), async
   try {
     const customerId = req.user!.id;
     
-    // Get count of assigned meal plans
-    const [mealPlansCount] = await db.select({
+    // Get count of assigned protocols
+    const [protocolsCount] = await db.select({
       count: sql<number>`count(*)::int`,
     })
-    .from(personalizedMealPlans)
-    .where(eq(personalizedMealPlans.customerId, customerId));
+    .from(protocolAssignments)
+    .where(eq(protocolAssignments.customerId, customerId));
 
-    // Get count of assigned recipes
-    const [recipesCount] = await db.select({
+    // Get count of active protocols
+    const [activeProtocolsCount] = await db.select({
       count: sql<number>`count(*)::int`,
     })
-    .from(personalizedRecipes)
-    .where(eq(personalizedRecipes.customerId, customerId));
+    .from(protocolAssignments)
+    .where(
+      and(
+        eq(protocolAssignments.customerId, customerId),
+        eq(protocolAssignments.status, 'active')
+      )
+    );
 
-    // Calculate completed days (mock calculation based on meal plans)
-    const mealPlans = await db.select()
-      .from(personalizedMealPlans)
-      .where(eq(personalizedMealPlans.customerId, customerId));
+    // Get count of completed protocols
+    const [completedProtocolsCount] = await db.select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(protocolAssignments)
+    .where(
+      and(
+        eq(protocolAssignments.customerId, customerId),
+        eq(protocolAssignments.status, 'completed')
+      )
+    );
 
-    const totalPlanDays = mealPlans.reduce((sum, plan) => {
-      return sum + (plan.mealPlanData as any)?.days || 0;
-    }, 0);
+    // Get progress measurements count
+    const [measurementsCount] = await db.select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(progressMeasurements)
+    .where(eq(progressMeasurements.customerId, customerId));
 
-    // Mock completed days (in reality, this would track user progress)
-    const completedDays = Math.floor(totalPlanDays * 0.6); // 60% completion rate
-    
-    // Calculate average calories (mock calculation)
-    const avgCaloriesPerDay = mealPlans.length > 0 
-      ? Math.floor(mealPlans.reduce((sum, plan) => {
-          return sum + ((plan.mealPlanData as any)?.dailyCalorieTarget || 2000);
-        }, 0) / mealPlans.length)
-      : 0;
+    // Get active goals count
+    const [activeGoalsCount] = await db.select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(customerGoals)
+    .where(
+      and(
+        eq(customerGoals.customerId, customerId),
+        eq(customerGoals.status, 'active')
+      )
+    );
 
     const stats = {
-      totalMealPlans: mealPlansCount?.count || 0,
-      completedDays: completedDays,
-      favoriteRecipes: recipesCount?.count || 0, // Simplified - using assigned recipes
-      avgCaloriesPerDay: avgCaloriesPerDay,
-      currentStreak: Math.min(7, completedDays), // Mock streak calculation
+      totalProtocols: protocolsCount?.count || 0,
+      activeProtocols: activeProtocolsCount?.count || 0,
+      completedProtocols: completedProtocolsCount?.count || 0,
+      totalMeasurements: measurementsCount?.count || 0,
+      activeGoals: activeGoalsCount?.count || 0,
+      healthScore: 85, // Mock health score - would be calculated based on progress
+      complianceRate: 92, // Mock compliance rate - would be calculated from protocol adherence
     };
 
     res.json(stats);
@@ -62,6 +89,382 @@ customerRouter.get('/profile/stats', requireAuth, requireRole('customer'), async
       code: 'SERVER_ERROR'
     });
   }
+});
+
+// Get customer's assigned protocols
+customerRouter.get('/protocols', requireAuth, requireRole('customer'), async (req, res) => {
+  try {
+    const customerId = req.user!.id;
+    const assignments = await storage.getCustomerProtocolAssignments(customerId);
+    res.json(assignments);
+  } catch (error) {
+    console.error('Failed to fetch customer protocols:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to fetch assigned protocols',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Get customer's progress measurements
+customerRouter.get('/progress/measurements', requireAuth, requireRole('customer'), async (req, res) => {
+  try {
+    const customerId = req.user!.id;
+    const measurements = await storage.getProgressMeasurements(customerId);
+    res.json(measurements);
+  } catch (error) {
+    console.error('Failed to fetch progress measurements:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to fetch progress measurements',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Create a new progress measurement
+customerRouter.post('/progress/measurements', requireAuth, requireRole('customer'), async (req, res) => {
+  try {
+    const customerId = req.user!.id;
+    const measurementData = createMeasurementSchema.parse(req.body);
+    
+    const measurement = await storage.createProgressMeasurement({
+      ...measurementData,
+      customerId,
+      measurementDate: new Date(measurementData.measurementDate),
+    });
+    
+    res.status(201).json(measurement);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        status: 'error',
+        message: 'Invalid measurement data',
+        errors: error.errors
+      });
+    }
+    console.error('Failed to create progress measurement:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to create progress measurement',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Update a progress measurement
+customerRouter.put('/progress/measurements/:id', requireAuth, requireRole('customer'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const customerId = req.user!.id;
+    const updates = req.body;
+    
+    // Verify ownership
+    const measurements = await storage.getProgressMeasurements(customerId);
+    const measurement = measurements.find(m => m.id === id);
+    
+    if (!measurement) {
+      return res.status(404).json({ 
+        status: 'error',
+        message: 'Measurement not found or access denied' 
+      });
+    }
+    
+    const updated = await storage.updateProgressMeasurement(id, updates);
+    res.json(updated);
+  } catch (error) {
+    console.error('Failed to update progress measurement:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to update progress measurement',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Delete a progress measurement
+customerRouter.delete('/progress/measurements/:id', requireAuth, requireRole('customer'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const customerId = req.user!.id;
+    
+    // Verify ownership
+    const measurements = await storage.getProgressMeasurements(customerId);
+    const measurement = measurements.find(m => m.id === id);
+    
+    if (!measurement) {
+      return res.status(404).json({ 
+        status: 'error',
+        message: 'Measurement not found or access denied' 
+      });
+    }
+    
+    const deleted = await storage.deleteProgressMeasurement(id);
+    if (deleted) {
+      res.json({ message: 'Measurement deleted successfully' });
+    } else {
+      res.status(500).json({ 
+        status: 'error',
+        message: 'Failed to delete measurement' 
+      });
+    }
+  } catch (error) {
+    console.error('Failed to delete progress measurement:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to delete progress measurement',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Get customer's progress photos
+customerRouter.get('/progress/photos', requireAuth, requireRole('customer'), async (req, res) => {
+  try {
+    const customerId = req.user!.id;
+    const photos = await storage.getProgressPhotos(customerId);
+    res.json(photos);
+  } catch (error) {
+    console.error('Failed to fetch progress photos:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to fetch progress photos',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Create a new progress photo
+customerRouter.post('/progress/photos', requireAuth, requireRole('customer'), async (req, res) => {
+  try {
+    const customerId = req.user!.id;
+    const photoData = uploadProgressPhotoSchema.parse(req.body);
+    
+    const photo = await storage.createProgressPhoto({
+      ...photoData,
+      customerId,
+      photoDate: new Date(photoData.photoDate),
+      photoUrl: req.body.photoUrl, // This would come from file upload
+      thumbnailUrl: req.body.thumbnailUrl, // Generated thumbnail
+    });
+    
+    res.status(201).json(photo);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        status: 'error',
+        message: 'Invalid photo data',
+        errors: error.errors
+      });
+    }
+    console.error('Failed to create progress photo:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to create progress photo',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Delete a progress photo
+customerRouter.delete('/progress/photos/:id', requireAuth, requireRole('customer'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const customerId = req.user!.id;
+    
+    // Verify ownership
+    const photos = await storage.getProgressPhotos(customerId);
+    const photo = photos.find(p => p.id === id);
+    
+    if (!photo) {
+      return res.status(404).json({ 
+        status: 'error',
+        message: 'Photo not found or access denied' 
+      });
+    }
+    
+    const deleted = await storage.deleteProgressPhoto(id);
+    if (deleted) {
+      res.json({ message: 'Photo deleted successfully' });
+    } else {
+      res.status(500).json({ 
+        status: 'error',
+        message: 'Failed to delete photo' 
+      });
+    }
+  } catch (error) {
+    console.error('Failed to delete progress photo:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to delete progress photo',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Get customer's goals
+customerRouter.get('/goals', requireAuth, requireRole('customer'), async (req, res) => {
+  try {
+    const customerId = req.user!.id;
+    const goals = await storage.getCustomerGoals(customerId);
+    res.json(goals);
+  } catch (error) {
+    console.error('Failed to fetch customer goals:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to fetch goals',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Create a new goal
+customerRouter.post('/goals', requireAuth, requireRole('customer'), async (req, res) => {
+  try {
+    const customerId = req.user!.id;
+    const goalData = createGoalSchema.parse(req.body);
+    
+    const goal = await storage.createCustomerGoal({
+      ...goalData,
+      customerId,
+      startDate: new Date(goalData.startDate),
+      targetDate: goalData.targetDate ? new Date(goalData.targetDate) : undefined,
+    });
+    
+    res.status(201).json(goal);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        status: 'error',
+        message: 'Invalid goal data',
+        errors: error.errors
+      });
+    }
+    console.error('Failed to create goal:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to create goal',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Update a goal
+customerRouter.put('/goals/:id', requireAuth, requireRole('customer'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const customerId = req.user!.id;
+    const updates = req.body;
+    
+    // Verify ownership
+    const goals = await storage.getCustomerGoals(customerId);
+    const goal = goals.find(g => g.id === id);
+    
+    if (!goal) {
+      return res.status(404).json({ 
+        status: 'error',
+        message: 'Goal not found or access denied' 
+      });
+    }
+    
+    const updated = await storage.updateCustomerGoal(id, updates);
+    res.json(updated);
+  } catch (error) {
+    console.error('Failed to update goal:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to update goal',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Delete a goal
+customerRouter.delete('/goals/:id', requireAuth, requireRole('customer'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const customerId = req.user!.id;
+    
+    // Verify ownership
+    const goals = await storage.getCustomerGoals(customerId);
+    const goal = goals.find(g => g.id === id);
+    
+    if (!goal) {
+      return res.status(404).json({ 
+        status: 'error',
+        message: 'Goal not found or access denied' 
+      });
+    }
+    
+    const deleted = await storage.deleteCustomerGoal(id);
+    if (deleted) {
+      res.json({ message: 'Goal deleted successfully' });
+    } else {
+      res.status(500).json({ 
+        status: 'error',
+        message: 'Failed to delete goal' 
+      });
+    }
+  } catch (error) {
+    console.error('Failed to delete goal:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to delete goal',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Update protocol assignment status (for customer to mark progress)
+customerRouter.put('/protocols/:assignmentId/status', requireAuth, requireRole('customer'), async (req, res) => {
+  try {
+    const { assignmentId } = req.params;
+    const { status, progressData } = req.body;
+    const customerId = req.user!.id;
+    
+    // Verify the assignment belongs to this customer
+    const assignments = await storage.getCustomerProtocolAssignments(customerId);
+    const assignment = assignments.find(a => a.id === assignmentId);
+    
+    if (!assignment) {
+      return res.status(404).json({ 
+        status: 'error',
+        message: 'Protocol assignment not found or access denied' 
+      });
+    }
+    
+    const updates: any = { status };
+    if (progressData) {
+      updates.progressData = progressData;
+    }
+    if (status === 'completed') {
+      updates.completedDate = new Date();
+    }
+    
+    const updated = await storage.updateProtocolAssignment(assignmentId, updates);
+    res.json(updated);
+  } catch (error) {
+    console.error('Failed to update protocol status:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to update protocol status',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Handle removed meal plan endpoints
+customerRouter.all('/meal-plans*', (req, res) => {
+  res.status(404).json({ 
+    message: 'Meal plan endpoints have been removed. This application now focuses on health protocols.' 
+  });
+});
+
+customerRouter.all('/recipes*', (req, res) => {
+  res.status(404).json({ 
+    message: 'Recipe endpoints have been removed. This application now focuses on health protocols.' 
+  });
 });
 
 export default customerRouter;

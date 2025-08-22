@@ -63,8 +63,22 @@
       "Bash(DATABASE_URL=postgresql://postgres:postgres@localhost:5433/fitmeal npx tsx scripts/enhance-customer-profile.js)",
       "Bash(DATABASE_URL=postgresql://postgres:postgres@localhost:5433/fitmeal psql -c \"SELECT email, username, role, firstName, lastName FROM users WHERE email LIKE ''%test%'';\")",
       "Bash(DATABASE_URL=postgresql://postgres:postgres@localhost:5433/fitmeal npx tsx scripts/verify-accounts.js)",
-      "Bash(DATABASE_URL=postgresql://postgres:postgres@localhost:5433/fitmeal npx tsx scripts/fix-customer-data.js)"
+      "Bash(DATABASE_URL=postgresql://postgres:postgres@localhost:5433/fitmeal npx tsx scripts/fix-customer-data.js)",
+      "Bash(npx playwright:*)",
+      "Bash(chmod:*)",
+      "Bash(npm audit:*)",
+      "Bash(POSTGRES_USER=postgres POSTGRES_PASSWORD=postgres POSTGRES_DB=evofithealthprotocol_db docker-compose --profile dev up -d)",
+      "Bash(git checkout:*)"
     ],
-    "deny": []
-  }
+    "deny": [],
+    "additionalDirectories": [
+      "C:\\c\\Users\\drmwe\\claude-workspace"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "github",
+    "context7",
+    "digitalocean"
+  ]
 }

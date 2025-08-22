@@ -3,18 +3,25 @@ version: '3.8'
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: healthprotocol-postgres
+    container_name: evofithealthprotocol-postgres
     restart: unless-stopped
     ports:
       - "5434:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: healthprotocol_db
+      POSTGRES_USER: ${POSTGRES_USER:-healthprotocol_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-healthprotocol_secure_pass_2024}
+      POSTGRES_DB: ${POSTGRES_DB:-evofithealthprotocol_db}
+    command: >
+      postgres 
+      -c log_statement=all 
+      -c log_duration=on
+      -c shared_preload_libraries=pg_stat_statements
+      -c max_connections=200
+      -c shared_buffers=256MB
     volumes:
-      - healthprotocol-postgres-data:/var/lib/postgresql/data
+      - evofithealthprotocol-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-healthprotocol_user}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -24,41 +31,53 @@ services:
     build:
       context: .
       target: dev
-    container_name: healthprotocol-dev
+    container_name: evofithealthprotocol-dev
     restart: unless-stopped
     ports:
-      - "4001:4001"
+      - "3500:3500"
       - "24679:24678"
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/healthprotocol_db
-      PORT: 4001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-healthprotocol_user}:${POSTGRES_PASSWORD:-healthprotocol_secure_pass_2024}@postgres:5432/${POSTGRES_DB:-evofithealthprotocol_db}
+      PORT: 3500
       NODE_ENV: development
-      JWT_SECRET: ${JWT_SECRET:-your-secret-key-here}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      BCRYPT_SALT_ROUNDS: ${BCRYPT_SALT_ROUNDS:-12}
       PDF_EXPORT_ENABLED: true
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+      AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
     volumes:
       - ./client:/app/client
       - ./server:/app/server
+      - ./scripts:/app/scripts
+      - ./shared:/app/shared
+      - ./test:/app/test
       - ./drizzle.config.ts:/app/drizzle.config.ts
+      - ./vite.config.ts:/app/vite.config.ts
+      - ./vitest.config.ts:/app/vitest.config.ts
       - /app/node_modules
       - ./package.json:/app/package.json
       - ./tsconfig.json:/app/tsconfig.json
     depends_on:
       postgres:
         condition: service_healthy
-    command: sh -c "npm run db:push && npm run dev"
+    command: sh -c "npx tsx server/index.ts"
 
   app-prod:
     profiles: ["prod"]
     build:
       context: .
       target: prod
-    container_name: healthprotocol-prod
+    container_name: evofithealthprotocol-prod
     restart: unless-stopped
     ports:
-      - "4001:4001"
+      - "3500:3500"
     environment:
       DATABASE_URL: ${DATABASE_URL}
-      PORT: 4001
+      PORT: 3500
       NODE_ENV: production
       JWT_SECRET: ${JWT_SECRET}
       PDF_EXPORT_ENABLED: true
@@ -67,4 +86,4 @@ services:
         condition: service_healthy
 
 volumes:
-  healthprotocol-postgres-data:
+  evofithealthprotocol-postgres-data:

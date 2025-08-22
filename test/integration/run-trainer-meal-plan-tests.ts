@@ -18,11 +18,11 @@ try {
 
 // Check if the development container is running
 try {
-  const result = execSync('docker ps --filter name=fitnessmealplanner-dev --format "{{.Names}}"', { 
+  const result = execSync('docker ps --filter name=evofithealthprotocol-dev --format "{{.Names}}"', { 
     encoding: 'utf-8' 
   });
   
-  if (!result.trim().includes('fitnessmealplanner-dev')) {
+  if (!result.trim().includes('evofithealthprotocol-dev')) {
     console.log(chalk.yellow('⚠️  Development container is not running. Starting it now...'));
     execSync('docker-compose --profile dev up -d', { stdio: 'inherit' });
     

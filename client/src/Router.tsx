@@ -5,7 +5,6 @@ import { useOAuthToken } from "./hooks/useOAuthToken";
 import Landing from "./pages/Landing";
 import Trainer from "./pages/Trainer";
 import Admin from "./pages/Admin";
-import Customer from "./pages/Customer";
 import AdminProfile from "./pages/AdminProfile";
 import TrainerProfile from "./pages/TrainerProfile";
 import CustomerProfile from "./pages/CustomerProfile";
@@ -88,14 +87,14 @@ export default function Router() {
           if (user.role !== 'customer') {
             return <Redirect to="/" />;
           }
-          return <Customer />;
+          return <CustomerProfile />;
         }} />
         
         <Route path="/my-meal-plans" component={() => {
           if (user.role !== 'customer') {
             return <Redirect to="/" />;
           }
-          return <Customer />;
+          return <CustomerProfile />;
         }} />
         
         {/* Trainer Routes - More specific routes first */}

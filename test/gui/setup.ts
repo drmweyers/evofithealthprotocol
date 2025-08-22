@@ -6,7 +6,7 @@ beforeAll(async () => {
   
   // Verify required environment variables
   if (!process.env.TEST_BASE_URL) {
-    process.env.TEST_BASE_URL = 'http://localhost:4000';
+    process.env.TEST_BASE_URL = 'http://localhost:3500';
   }
   
   // Wait for application to be ready

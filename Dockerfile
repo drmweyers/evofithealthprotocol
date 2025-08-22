@@ -13,12 +13,26 @@ RUN apk add --no-cache postgresql-client \
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
-# Development stage
+# Development stage - SECURITY HARDENED
 FROM base AS dev
-COPY package*.json ./
+
+# Create non-root user for development
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S appuser -u 1001 -G appgroup
+
+# Set up working directory with proper permissions
+WORKDIR /app
+RUN chown -R appuser:appgroup /app
+
+# Switch to non-root user for package installation
+USER appuser
+
+COPY --chown=appuser:appgroup package*.json ./
 RUN npm install
-COPY . .
-EXPOSE 5001 24678
+
+COPY --chown=appuser:appgroup . .
+
+EXPOSE 3500 24678
 CMD ["npm", "run", "dev"]
 
 # Build stage - CRITICAL: Verify drizzle.config.ts exists
@@ -115,5 +129,5 @@ RUN adduser -D -s /bin/sh appuser && \
 USER appuser
 
 ENV NODE_ENV=production
-EXPOSE 5001
+EXPOSE 3500
 CMD ["./start.sh"]

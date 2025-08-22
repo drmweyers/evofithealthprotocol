@@ -35,7 +35,7 @@ export const PUPPETEER_CONFIG: PuppeteerLaunchOptions = {
 
 export const TEST_CONFIG = {
   // Base URL for the application
-  baseUrl: process.env.TEST_BASE_URL || 'http://localhost:4000',
+  baseUrl: process.env.TEST_BASE_URL || 'http://localhost:3500',
   
   // Timeout settings
   timeout: 30000,

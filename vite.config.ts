@@ -3,16 +3,17 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
+  root: './client',
   plugins: [react()],
   server: {
-    port: 4001,
+    port: 3500,
     host: true,
     hmr: {
       port: 24679
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:4001',
+        target: 'http://localhost:3500',
         changeOrigin: true
       }
     }
@@ -28,7 +29,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: 'dist-healthprotocol',
+    outDir: 'dist-evofithealthprotocol',
     rollupOptions: {
       output: {
         manualChunks: {

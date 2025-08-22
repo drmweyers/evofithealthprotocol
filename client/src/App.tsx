@@ -1,19 +1,18 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import Login from './components/Login';
+import LoginPage from './pages/LoginPage';
 import HealthProtocolDashboard from './components/HealthProtocolDashboard';
-import AdminPanel from './components/AdminPanel';
-import { AuthProvider } from './contexts/AuthContext';
-import { useAuth } from './hooks/useAuth';
+import Admin from './pages/Admin';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[] }> = ({ 
   children, 
   allowedRoles 
 }) => {
-  const { user, loading } = useAuth();
+  const { user, isLoading } = useAuth();
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -39,7 +38,7 @@ function App() {
         <div className="min-h-screen bg-gray-50">
           <Toaster position="top-right" />
           <Routes>
-            <Route path="/" element={<Login />} />
+            <Route path="/" element={<LoginPage />} />
             <Route 
               path="/protocols" 
               element={
@@ -52,7 +51,7 @@ function App() {
               path="/admin" 
               element={
                 <PrivateRoute allowedRoles={['admin']}>
-                  <AdminPanel />
+                  <Admin />
                 </PrivateRoute>
               } 
             />

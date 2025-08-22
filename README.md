@@ -1,6 +1,6 @@
-# FitnessMealPlanner
+# EvoFitHealthProtocol
 
-A comprehensive meal planning application for fitness professionals and their clients, featuring recipe management, meal plan generation, PDF exports, customer progress tracking, and multi-role support.
+A comprehensive health protocol management application for fitness professionals and their clients, featuring recipe management, meal plan generation, PDF exports, customer progress tracking, and multi-role support.
 
 ## 🎯 Features Overview
 
@@ -23,7 +23,7 @@ A comprehensive meal planning application for fitness professionals and their cl
 ```bash
 # 1. Clone the repository
 git clone <repository-url>
-cd FitnessMealPlanner
+cd EvoFitHealthProtocol
 
 # 2. Copy environment variables
 cp .env.example .env
@@ -35,8 +35,8 @@ npm run setup:check
 npm run docker:dev
 
 # 5. Access the application
-# Frontend: http://localhost:4000
-# API: http://localhost:4000/api
+# Frontend: http://localhost:3500
+# API: http://localhost:3500/api
 ```
 
 ## Running the Project with Docker
@@ -61,9 +61,9 @@ This project uses Docker for consistent development and production environments.
    ```
 
 3. **Access the application:**
-   - Frontend: http://localhost:4000
-   - Backend API: http://localhost:4000/api
-   - PostgreSQL: localhost:5432
+   - Frontend: http://localhost:3500
+   - Backend API: http://localhost:3500/api
+   - PostgreSQL: localhost:5434
 
 ### Development Environment Details
 
@@ -75,12 +75,12 @@ The development setup includes:
 
 ### Service Ports
 - **Development:**
-  - Combined Frontend/Backend: Port **4000**
-  - PostgreSQL Database: Port **5432**
-  - HMR WebSocket: Port **24678**
+  - Combined Frontend/Backend: Port **3500**
+  - PostgreSQL Database: Port **5434**
+  - HMR WebSocket: Port **24679**
 - **Production:**
-  - Application: Port **5001**
-  - PostgreSQL: Port **5432**
+  - Application: Port **3500**
+  - PostgreSQL: Port **5434**
 
 ### Common Docker Commands
 
@@ -92,7 +92,7 @@ docker-compose --profile dev up -d
 docker-compose --profile dev down
 
 # View logs
-docker logs fitnessmealplanner-dev -f
+docker logs evofithealthprotocol-dev -f
 
 # Restart containers
 docker-compose --profile dev restart
@@ -110,7 +110,7 @@ Create a `.env` file in the project root with the following variables:
 
 ```env
 # Database
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/fitmeal
+DATABASE_URL=postgresql://postgres:postgres@localhost:5434/evofithealthprotocol_db
 
 # JWT Secret (generate a secure random string)
 JWT_SECRET=your-secret-key-here
@@ -134,12 +134,12 @@ EMAIL_PASS=your-app-password
   ```
 
 **Issue: Port already in use**
-- Solution: Check if another service is using port 4000 or 5432:
+- Solution: Check if another service is using port 3500 or 5434:
   ```sh
   # Windows
-  netstat -ano | findstr :4000
+  netstat -ano | findstr :3500
   # Linux/Mac
-  lsof -i :4000
+  lsof -i :3500
   ```
 
 **Issue: Changes not reflecting**
@@ -152,8 +152,8 @@ EMAIL_PASS=your-app-password
 
 1. **Always start Docker first** before beginning development
 2. **Check container health** with `docker ps`
-3. **Monitor logs** with `docker logs fitnessmealplanner-dev -f`
-4. **Access the app** at http://localhost:4000
+3. **Monitor logs** with `docker logs evofithealthprotocol-dev -f`
+4. **Access the app** at http://localhost:3500
 
 For production deployment, refer to `DEPLOYMENT_GUIDE.md`.
 
@@ -179,7 +179,7 @@ For production deployment, refer to `DEPLOYMENT_GUIDE.md`.
 ## 📁 Project Structure
 
 ```
-FitnessMealPlanner/
+EvoFitHealthProtocol/
 ├── client/                     # React Frontend Application
 │   ├── src/
 │   │   ├── components/         # Reusable UI Components

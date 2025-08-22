@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import TrainerHealthProtocols from './TrainerHealthProtocols';
 import { LogOut, FileText, Shield, Home } from 'lucide-react';
 
@@ -29,7 +29,7 @@ const HealthProtocolDashboard: React.FC = () => {
             
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
-                Welcome, {user?.username || user?.email}
+                Welcome, {user?.name || user?.email}
               </span>
               {user?.role === 'admin' && (
                 <button

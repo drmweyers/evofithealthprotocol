@@ -8,7 +8,7 @@ echo.
 
 REM Check if Docker is running
 echo 🔍 Checking prerequisites...
-docker ps | findstr "fitnessmealplanner-dev" >nul
+docker ps | findstr "evofithealthprotocol-dev" >nul
 if %errorlevel% neq 0 (
     echo ❌ Development server not running!
     echo Please start it first: docker-compose --profile dev up -d

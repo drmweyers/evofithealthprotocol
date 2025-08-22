@@ -1,48 +1,55 @@
 import OpenAI from "openai";
 import {
-  mealPlanGenerationSchema,
-  type MealPlanGeneration,
+  createHealthProtocolSchema,
+  type CreateHealthProtocol,
 } from "@shared/schema";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export interface GeneratedRecipe {
+export interface GeneratedHealthProtocol {
   name: string;
   description: string;
-  mealTypes: string[];
-  dietaryTags: string[];
-  mainIngredientTags: string[];
-  ingredients: { name: string; amount: number; unit: string }[];
-  instructions: string;
-  prepTimeMinutes: number;
-  cookTimeMinutes: number;
-  servings: number;
-  estimatedNutrition: {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
+  type: 'longevity' | 'parasite_cleanse';
+  duration: number; // in days
+  intensity: 'gentle' | 'moderate' | 'intensive';
+  config: any; // Protocol-specific configuration
+  tags: string[];
+  recommendations: {
+    supplements: Array<{
+      name: string;
+      dosage: string;
+      timing: string;
+      purpose: string;
+    }>;
+    dietaryGuidelines: Array<{
+      category: string;
+      instruction: string;
+      importance: 'high' | 'medium' | 'low';
+    }>;
+    lifestyleChanges: Array<{
+      change: string;
+      rationale: string;
+      difficulty: 'easy' | 'moderate' | 'challenging';
+    }>;
+    precautions: Array<{
+      warning: string;
+      severity: 'info' | 'warning' | 'critical';
+    }>;
   };
-  imageUrl: string;
 }
 
-interface GenerateOptions {
-  mealTypes?: string[];
-  dietaryRestrictions?: string[];
-  targetCalories?: number;
-  mainIngredient?: string;
-  fitnessGoal?: string;
+interface ProtocolGenerationOptions {
+  protocolType?: 'longevity' | 'parasite_cleanse';
+  intensity?: 'gentle' | 'moderate' | 'intensive';
+  duration?: number; // in days
+  userAge?: number;
+  healthConditions?: string[];
+  currentMedications?: string[];
+  experience?: 'beginner' | 'intermediate' | 'advanced';
+  specificGoals?: string[];
   naturalLanguagePrompt?: string;
-  maxPrepTime?: number;
-  maxCalories?: number;
-  minProtein?: number;
-  maxProtein?: number;
-  minCarbs?: number;
-  maxCarbs?: number;
-  minFat?: number;
-  maxFat?: number;
 }
 
 /**
@@ -81,7 +88,6 @@ function parsePartialJson(jsonString: string): any {
     const jsonEnd = potentialJson.lastIndexOf('}');
     potentialJson = potentialJson.substring(jsonStart, jsonEnd + 1);
 
-
     try {
       // Try parsing the repaired string
       const parsed = JSON.parse(potentialJson);
@@ -95,90 +101,87 @@ function parsePartialJson(jsonString: string): any {
 }
 
 /**
- * Enhanced recipe batch generation with detailed system prompts
+ * Generate a personalized health protocol using AI
  */
-export async function generateRecipeBatch(
-  count: number,
-  options: GenerateOptions = {}
-): Promise<GeneratedRecipe[]> {
-  const systemPrompt = `You are an expert nutritionist and professional chef.
-Generate a batch of ${count} diverse and healthy recipes.
-${options.fitnessGoal ? `Focus on recipes that support this fitness goal: ${options.fitnessGoal}.` : ''}
-${options.targetCalories ? `Target approximately ${options.targetCalories} calories per recipe.` : ''}
-${options.maxCalories ? `Ensure recipes do not exceed ${options.maxCalories} calories.` : ''}
-${options.mainIngredient ? `Feature "${options.mainIngredient}" as a primary ingredient when possible.` : ''}
-${options.maxPrepTime ? `Keep preparation time under ${options.maxPrepTime} minutes.` : ''}
-IMPORTANT: Respond with a single JSON object containing a 'recipes' array: { "recipes": [...] }.
-Each recipe object in the array MUST be complete and strictly follow this TypeScript interface:
-interface GeneratedRecipe {
+export async function generateHealthProtocol(
+  options: ProtocolGenerationOptions = {}
+): Promise<GeneratedHealthProtocol> {
+  const systemPrompt = `You are an expert functional medicine practitioner and health optimization specialist.
+Generate a personalized health protocol based on the user's requirements.
+${options.protocolType ? `Focus on a ${options.protocolType.replace('_', ' ')} protocol.` : ''}
+${options.intensity ? `Use ${options.intensity} intensity approach.` : ''}
+${options.duration ? `Design for ${options.duration} days duration.` : ''}
+
+IMPORTANT: Respond with a single JSON object that strictly follows this TypeScript interface:
+interface GeneratedHealthProtocol {
   name: string;
   description: string;
-  mealTypes: string[]; // e.g., ["Breakfast", "Snack"]
-  dietaryTags: string[]; // e.g., ["Gluten-Free", "Vegan"]
-  mainIngredientTags: string[]; // e.g., ["Chicken", "Broccoli"]
-  ingredients: { name: string; amount: number; unit: string }[];
-  instructions: string; // Detailed, step-by-step instructions.
-  prepTimeMinutes: number;
-  cookTimeMinutes: number;
-  servings: number;
-  estimatedNutrition: {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
+  type: 'longevity' | 'parasite_cleanse';
+  duration: number; // in days
+  intensity: 'gentle' | 'moderate' | 'intensive';
+  config: any; // Protocol-specific configuration object
+  tags: string[];
+  recommendations: {
+    supplements: Array<{
+      name: string;
+      dosage: string;
+      timing: string;
+      purpose: string;
+    }>;
+    dietaryGuidelines: Array<{
+      category: string;
+      instruction: string;
+      importance: 'high' | 'medium' | 'low';
+    }>;
+    lifestyleChanges: Array<{
+      change: string;
+      rationale: string;
+      difficulty: 'easy' | 'moderate' | 'challenging';
+    }>;
+    precautions: Array<{
+      warning: string;
+      severity: 'info' | 'warning' | 'critical';
+    }>;
   };
-  imageUrl: string; // Set this to an empty string: ""
 }
+
+Ensure the protocol is safe, evidence-based, and includes appropriate warnings.
+ALWAYS include disclaimers about consulting healthcare providers.
 Ensure the final JSON is perfectly valid and complete. Do not omit any fields.`;
 
   const contextLines = [];
   if (options.naturalLanguagePrompt) {
     contextLines.push(`User requirements: "${options.naturalLanguagePrompt}"`);
   }
-  if (options.mealTypes?.length) {
-    contextLines.push(`Meal types: ${options.mealTypes.join(", ")}`);
+  if (options.protocolType) {
+    contextLines.push(`Protocol type: ${options.protocolType}`);
   }
-  if (options.dietaryRestrictions?.length) {
-    contextLines.push(`Dietary restrictions: ${options.dietaryRestrictions.join(", ")}`);
+  if (options.intensity) {
+    contextLines.push(`Intensity level: ${options.intensity}`);
   }
-  if (options.fitnessGoal) {
-    contextLines.push(`Fitness goal: ${options.fitnessGoal}`);
+  if (options.duration) {
+    contextLines.push(`Duration: ${options.duration} days`);
   }
-  if (options.targetCalories) {
-    contextLines.push(`Target calories per recipe: ~${options.targetCalories}`);
+  if (options.userAge) {
+    contextLines.push(`User age: ${options.userAge} years`);
   }
-  if (options.maxCalories) {
-    contextLines.push(`Maximum calories per recipe: ${options.maxCalories}`);
+  if (options.healthConditions?.length) {
+    contextLines.push(`Health conditions: ${options.healthConditions.join(", ")}`);
   }
-  if (options.mainIngredient) {
-    contextLines.push(`Main ingredient focus: ${options.mainIngredient}`);
+  if (options.currentMedications?.length) {
+    contextLines.push(`Current medications: ${options.currentMedications.join(", ")}`);
   }
-  if (options.maxPrepTime) {
-    contextLines.push(`Maximum prep time: ${options.maxPrepTime} minutes`);
+  if (options.experience) {
+    contextLines.push(`Experience level: ${options.experience}`);
   }
-  
-  // Macro nutrient constraints
-  const macroConstraints = [];
-  if (options.minProtein || options.maxProtein) {
-    const proteinRange = `${options.minProtein || 0}g - ${options.maxProtein || '∞'}g protein`;
-    macroConstraints.push(proteinRange);
-  }
-  if (options.minCarbs || options.maxCarbs) {
-    const carbRange = `${options.minCarbs || 0}g - ${options.maxCarbs || '∞'}g carbs`;
-    macroConstraints.push(carbRange);
-  }
-  if (options.minFat || options.maxFat) {
-    const fatRange = `${options.minFat || 0}g - ${options.maxFat || '∞'}g fat`;
-    macroConstraints.push(fatRange);
-  }
-  if (macroConstraints.length > 0) {
-    contextLines.push(`Macro nutrient targets per recipe: ${macroConstraints.join(", ")}`);
+  if (options.specificGoals?.length) {
+    contextLines.push(`Specific goals: ${options.specificGoals.join(", ")}`);
   }
 
-  const userPrompt = `Generate ${count} recipes with the following specifications:
-${contextLines.length > 0 ? contextLines.join('\n') : 'No specific requirements - create diverse, healthy recipes.'}
+  const userPrompt = `Generate a health protocol with the following specifications:
+${contextLines.length > 0 ? contextLines.join('\n') : 'No specific requirements - create a safe, effective protocol.'}
 
-Respond with { "recipes": [ ... ] }`;
+Focus on evidence-based approaches and include appropriate safety warnings.`;
 
   try {
     const response = await openai.chat.completions.create({
@@ -188,7 +191,7 @@ Respond with { "recipes": [ ... ] }`;
         { role: "user", content: userPrompt },
       ],
       response_format: { type: "json_object" },
-      temperature: 0.8,
+      temperature: 0.7,
     });
 
     const content = response.choices[0].message.content;
@@ -199,159 +202,49 @@ Respond with { "recipes": [ ... ] }`;
     // Use the robust JSON parser
     const parsedJson = parsePartialJson(content);
 
-    // Extract recipes array, which might be at the top level or nested
-    const recipes = parsedJson.recipes || (Array.isArray(parsedJson) ? parsedJson : []);
-
-    if (!Array.isArray(recipes) || recipes.length === 0) {
-      console.error("Parsed content that was not a valid recipe array:", recipes);
-      throw new Error("Invalid or empty recipe array received from OpenAI.");
-    }
-    
-    // Full validation on each recipe object
-    const validRecipes: GeneratedRecipe[] = [];
-    const invalidRecipes: any[] = [];
-
-    for (const r of recipes) {
-      if (
-        r &&
-        r.name &&
-        r.ingredients &&
-        r.instructions &&
-        r.estimatedNutrition &&
-        typeof r.imageUrl === 'string'
-      ) {
-        validRecipes.push(r as GeneratedRecipe);
-      } else {
-        invalidRecipes.push(r);
-      }
+    // Validate the protocol structure
+    if (!parsedJson.name || !parsedJson.type || !parsedJson.recommendations) {
+      throw new Error("Invalid protocol structure received from OpenAI");
     }
 
-    if (invalidRecipes.length > 0) {
-      console.warn(`Filtered out ${invalidRecipes.length} invalid recipe objects.`);
-      // Log only the first invalid object to avoid flooding logs
-      console.debug('Example invalid recipe:', JSON.stringify(invalidRecipes[0], null, 2));
-    }
-
-    return validRecipes;
+    return parsedJson as GeneratedHealthProtocol;
 
   } catch (error) {
-    console.error("Full error in generateRecipeBatch:", error);
+    console.error("Full error in generateHealthProtocol:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-    // Log the failing content for debugging
-    if (error instanceof Error && error.message.includes("JSON")) {
-      // The content is likely logged in parsePartialJson
-    }
-    throw new Error(`Failed to generate recipe batch: ${errorMessage}`);
+    throw new Error(`Failed to generate health protocol: ${errorMessage}`);
   }
 }
 
-export async function generateImageForRecipe(recipe: GeneratedRecipe): Promise<string> {
-  const imagePrompt = `
-    Generate an ultra-realistic, high-resolution photograph of "${recipe.name}", a ${recipe.mealTypes[0].toLowerCase()} dish.
-    It features: ${recipe.description}.
-    Present it artfully plated on a clean white ceramic plate set atop a rustic wooden table.
-    Illuminate the scene with soft, natural side lighting to bring out the textures and vibrant colors of the ingredients.
-    Use a shallow depth of field (aperture f/2.8) and a 45° camera angle for a professional, editorial look.
-    Add subtle garnishes and minimal props (e.g., fresh herbs, linen napkin) to enhance context without clutter.
-    The final image should be bright, mouthwatering, and ready for a premium fitness-focused recipe website.
-    Style: photorealistic.
-  `;
-
-  const response = await openai.images.generate({
-    model: "dall-e-3",
-    prompt: imagePrompt,
-    n: 1,
-    size: "1024x1024",
-    quality: "hd",
-  });
-
-  if (!response.data || response.data.length === 0) {
-    throw new Error("No image data received from OpenAI");
-  }
-
-  const imageUrl = response.data[0].url;
-  if (!imageUrl) {
-    throw new Error("No image URL received from OpenAI");
-  }
-
-  // In a real application, you would upload this to your own cloud storage
-  return imageUrl;
-}
-
-// Alias for backwards compatibility with routes
-export const parseNaturalLanguageMealPlan = parseNaturalLanguageForMealPlan;
-
-export async function parseNaturalLanguageForMealPlan(
+/**
+ * Parse natural language input for health protocol generation
+ */
+export async function parseNaturalLanguageForHealthProtocol(
   naturalLanguageInput: string,
-): Promise<Partial<MealPlanGeneration>> {
+): Promise<Partial<CreateHealthProtocol & ProtocolGenerationOptions>> {
   const systemPrompt = `
-You are an intelligent assistant for a meal planning application.
-A user has provided a natural language request to create a meal plan.
-Your task is to parse this request and extract the key parameters into a structured JSON object.
-The JSON object must strictly adhere to the following Zod schema:
-${JSON.stringify(mealPlanGenerationSchema.shape, null, 2)}
-
-- Infer the values from the user's text.
-- If a value isn't mentioned, omit the key from the JSON object.
-- Be smart about interpreting flexible language (e.g., "for a week" means 7 days).
-- For 'fitnessGoal', choose from common goals like 'weight loss', 'muscle gain', 'maintenance', 'athletic performance'.
-- The output MUST be a single, valid JSON object. Do not include any other text or explanations.
-`;
-
-  const userPrompt = `Parse the following meal plan request: "${naturalLanguageInput}"`;
-
-  try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.2,
-    });
-
-    const content = response.choices[0].message.content;
-    if (!content) {
-      throw new Error("No content received from OpenAI");
-    }
-
-    const parsedJson = parsePartialJson(content);
-
-    // No need to validate against the full schema here,
-    // the frontend form and its resolver will do that.
-    // We are just extracting what the AI could find.
-    return parsedJson as Partial<MealPlanGeneration>;
-
-  } catch (error) {
-    console.error("Full error in parseNaturalLanguageForMealPlan:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-    throw new Error(`Failed to parse natural language for meal plan: ${errorMessage}`);
-  }
-}
-
-// Additional function for parsing recipe requirements
-export async function parseNaturalLanguageRecipeRequirements(
-  naturalLanguageInput: string,
-): Promise<any> {
-  const systemPrompt = `
-You are an intelligent assistant for a recipe management application.
-A user has provided a natural language request to create or find recipes.
+You are an intelligent assistant for a health protocol application.
+A user has provided a natural language request to create a health protocol.
 Your task is to parse this request and extract the key parameters into a structured JSON object.
 The JSON object should include fields like:
-- mealTypes: array of strings (e.g., ["breakfast", "lunch", "dinner", "snack"])
-- dietaryTags: array of strings (e.g., ["vegetarian", "gluten-free", "keto"])
-- mainIngredientTags: array of strings (e.g., ["chicken", "beef", "tofu"])
-- maxPrepTime: number (in minutes)
-- targetCalories: number
-- fitnessGoal: string
-- description: string
+- name: string (suggested protocol name)
+- description: string (brief description)
+- type: 'longevity' | 'parasite_cleanse'
+- duration: number (in days)
+- intensity: 'gentle' | 'moderate' | 'intensive'
+- tags: array of strings
+- userAge: number (if mentioned)
+- healthConditions: array of strings
+- currentMedications: array of strings
+- experience: 'beginner' | 'intermediate' | 'advanced'
+- specificGoals: array of strings
 
 If a value isn't mentioned, omit the key from the JSON object.
+Be smart about interpreting flexible language (e.g., "for a month" means 30 days).
 The output MUST be a single, valid JSON object. Do not include any other text or explanations.
 `;
 
-  const userPrompt = `Parse the following recipe requirements: "${naturalLanguageInput}"`;
+  const userPrompt = `Parse the following health protocol request: "${naturalLanguageInput}"`;
 
   try {
     const response = await openai.chat.completions.create({
@@ -370,14 +263,116 @@ The output MUST be a single, valid JSON object. Do not include any other text or
     }
 
     const parsedJson = parsePartialJson(content);
-    return parsedJson;
+    return parsedJson as Partial<CreateHealthProtocol & ProtocolGenerationOptions>;
 
   } catch (error) {
-    console.error("Full error in parseNaturalLanguageRecipeRequirements:", error);
+    console.error("Full error in parseNaturalLanguageForHealthProtocol:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-    throw new Error(`Failed to parse natural language for recipe requirements: ${errorMessage}`);
+    throw new Error(`Failed to parse natural language for health protocol: ${errorMessage}`);
   }
 }
 
-// Alias for image generation (referenced in mealPlanGenerator but not implemented)
-export const generateMealImage = generateImageForRecipe;
+/**
+ * Generate educational content about health protocols
+ */
+export async function generateProtocolEducation(
+  protocolType: 'longevity' | 'parasite_cleanse',
+  topic?: string
+): Promise<{
+  title: string;
+  content: string;
+  keyPoints: string[];
+  references: string[];
+}> {
+  const systemPrompt = `You are an expert in functional medicine and health optimization.
+Generate educational content about ${protocolType.replace('_', ' ')} protocols.
+${topic ? `Focus specifically on: ${topic}` : ''}
+
+Provide evidence-based information that helps users understand the science and benefits.
+Include key points and credible references where possible.
+
+Respond with a JSON object containing:
+- title: string (educational article title)
+- content: string (detailed educational content)
+- keyPoints: string[] (main takeaways)
+- references: string[] (credible sources/studies)`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Generate educational content about ${protocolType} protocols${topic ? ` focusing on ${topic}` : ''}` },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.3,
+    });
+
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error("No content received from OpenAI");
+    }
+
+    return parsePartialJson(content);
+
+  } catch (error) {
+    console.error("Full error in generateProtocolEducation:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    throw new Error(`Failed to generate protocol education: ${errorMessage}`);
+  }
+}
+
+/**
+ * Analyze potential interactions between protocols and medications
+ */
+export async function analyzeProtocolInteractions(
+  protocolConfig: any,
+  medications: string[],
+  healthConditions: string[]
+): Promise<{
+  safetyRating: 'safe' | 'caution' | 'warning' | 'contraindicated';
+  interactions: Array<{
+    type: 'medication' | 'condition';
+    item: string;
+    severity: 'low' | 'medium' | 'high';
+    description: string;
+    recommendation: string;
+  }>;
+  generalRecommendations: string[];
+}> {
+  const systemPrompt = `You are a clinical pharmacist and functional medicine expert.
+Analyze potential interactions between health protocols and user's medications/conditions.
+Provide a safety assessment and specific interaction warnings.
+
+IMPORTANT: Always err on the side of caution and recommend consulting healthcare providers.
+Respond with a JSON object following the specified structure.`;
+
+  const userPrompt = `Analyze interactions for:
+Protocol: ${JSON.stringify(protocolConfig)}
+Medications: ${medications.join(', ')}
+Health Conditions: ${healthConditions.join(', ')}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.1, // Low temperature for safety analysis
+    });
+
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error("No content received from OpenAI");
+    }
+
+    return parsePartialJson(content);
+
+  } catch (error) {
+    console.error("Full error in analyzeProtocolInteractions:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    throw new Error(`Failed to analyze protocol interactions: ${errorMessage}`);
+  }
+}

@@ -30,7 +30,7 @@ import {
   Clock,
   Download
 } from 'lucide-react';
-import type { MealPlan } from '@shared/schema';
+// MealPlan type removed - using local interfaces instead
 
 interface Customer {
   id: string;

@@ -9,7 +9,7 @@ echo
 
 # Check if Docker is running
 echo "🔍 Checking prerequisites..."
-if ! docker ps | grep -q "fitnessmealplanner-dev"; then
+if ! docker ps | grep -q "evofithealthprotocol-dev"; then
     echo "❌ Development server not running!"
     echo "Please start it first: docker-compose --profile dev up -d"
     exit 1

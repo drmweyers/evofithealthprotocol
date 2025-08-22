@@ -17,7 +17,7 @@ export const puppeteerConfig: Configuration = {
 };
 
 export const testConfig = {
-  baseUrl: process.env.TEST_BASE_URL || 'http://localhost:4000',
+  baseUrl: process.env.TEST_BASE_URL || 'http://localhost:3500',
   timeout: 30000,
   adminCredentials: {
     email: 'admin@fitmeal.pro',

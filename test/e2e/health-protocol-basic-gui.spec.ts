@@ -8,7 +8,7 @@ import { test, expect, Page } from '@playwright/test';
  */
 
 const TEST_CONFIG = {
-  baseURL: 'http://localhost:4000',
+  baseURL: 'http://localhost:3500',
   testAccounts: {
     trainer: {
       email: 'trainer.test@evofitmeals.com',
@@ -27,7 +27,8 @@ class BasicHealthProtocolHelper {
   async loginTrainer() {
     console.log('🔐 Logging in as trainer...');
     
-    await this.page.goto(TEST_CONFIG.baseURL);
+    // Navigate to login page
+    await this.page.goto(`${TEST_CONFIG.baseURL}/login`);
     await this.page.waitForSelector('input[type="email"]', { timeout: TEST_CONFIG.timeouts.element });
     
     // Clear and fill credentials

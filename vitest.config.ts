@@ -9,11 +9,17 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./test/setup.ts'],
     include: ['test/unit/**/*.test.{ts,tsx}', 'test/integration/**/*.test.{ts,tsx}'],
-    exclude: ['node_modules', 'dist', '.git', 'test/e2e/**'],
+    exclude: ['node_modules', 'dist', '.git', 'test/e2e/**', 'client/node_modules/**'],
     typecheck: {
       enabled: false
     },
     css: false,
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true
+      }
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

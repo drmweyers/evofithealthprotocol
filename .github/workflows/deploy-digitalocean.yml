@@ -1,0 +1,351 @@
+name: Deploy to DigitalOcean
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  REGISTRY: registry.digitalocean.com
+  IMAGE_NAME: bci/evofithealthprotocol
+  NODE_VERSION: '20.x'
+
+jobs:
+  # Job 1: Run tests before deployment
+  test:
+    name: Test Application
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run type checking
+        run: npm run type-check
+      
+      - name: Run linting
+        run: npm run lint
+      
+      - name: Run tests
+        run: npm test
+        env:
+          CI: true
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+      
+      - name: Build application
+        run: npm run build
+
+  # Job 2: Build and push Docker image
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+      
+      - name: Log in to DigitalOcean Container Registry
+        run: doctl registry login --expiry-seconds 1200
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ github.event.inputs.environment || 'production' }},enable=${{ github.event_name == 'workflow_dispatch' }}
+      
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          target: prod
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_ENV=production
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+
+  # Job 3: Deploy to DigitalOcean App Platform
+  deploy:
+    name: Deploy to DigitalOcean
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+      url: ${{ steps.deploy.outputs.app-url }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+      
+      - name: Get App ID
+        id: app-id
+        run: |
+          APP_ID=$(doctl apps list --format ID,Name --no-header | grep evofithealthprotocol | awk '{print $1}')
+          if [ -z "$APP_ID" ]; then
+            echo "App not found. Creating new app..."
+            APP_ID="new"
+          fi
+          echo "app-id=$APP_ID" >> $GITHUB_OUTPUT
+      
+      - name: Create app spec
+        run: |
+          cat > app-spec.yaml <<EOF
+          name: evofithealthprotocol
+          region: tor
+          services:
+          - name: web
+            image:
+              registry_type: DOCR
+              repository: ${{ env.IMAGE_NAME }}
+              tag: ${{ github.event.inputs.environment || 'production' }}
+            instance_count: 1
+            instance_size_slug: professional-xs
+            http_port: 3500
+            health_check:
+              http_path: /api/health
+              initial_delay_seconds: 30
+              period_seconds: 30
+              timeout_seconds: 10
+              success_threshold: 1
+              failure_threshold: 3
+            envs:
+            - key: NODE_ENV
+              value: production
+            - key: PORT
+              value: "3500"
+            - key: DATABASE_URL
+              scope: RUN_TIME
+              value: \${evofithealthprotocol-db.DATABASE_URL}
+            - key: JWT_SECRET
+              scope: RUN_TIME
+              type: SECRET
+              value: ${{ secrets.JWT_SECRET }}
+            - key: OPENAI_API_KEY
+              scope: RUN_TIME
+              type: SECRET
+              value: ${{ secrets.OPENAI_API_KEY }}
+            - key: RESEND_API_KEY
+              scope: RUN_TIME
+              type: SECRET
+              value: ${{ secrets.RESEND_API_KEY }}
+            - key: FROM_EMAIL
+              scope: RUN_TIME
+              value: ${{ secrets.FROM_EMAIL }}
+            - key: AWS_ACCESS_KEY_ID
+              scope: RUN_TIME
+              type: SECRET
+              value: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            - key: AWS_SECRET_ACCESS_KEY
+              scope: RUN_TIME
+              type: SECRET
+              value: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            - key: AWS_REGION
+              value: tor1
+            - key: AWS_ENDPOINT
+              value: https://tor1.digitaloceanspaces.com
+            - key: S3_BUCKET_NAME
+              value: evofithealthprotocol
+            - key: BCRYPT_ROUNDS
+              value: "12"
+            - key: CORS_ORIGIN
+              value: https://evofithealthprotocol-\${COMMIT_HASH}.ondigitalocean.app
+            - key: AUTO_MIGRATE
+              value: "true"
+          databases:
+          - name: evofithealthprotocol-db
+            engine: PG
+            version: "15"
+            size: db-s-1vcpu-1gb
+            num_nodes: 1
+          EOF
+      
+      - name: Deploy or update app
+        id: deploy
+        run: |
+          if [ "${{ steps.app-id.outputs.app-id }}" = "new" ]; then
+            echo "Creating new app..."
+            doctl apps create --spec app-spec.yaml --wait
+            APP_ID=$(doctl apps list --format ID,Name --no-header | grep evofithealthprotocol | awk '{print $1}')
+          else
+            echo "Updating existing app..."
+            doctl apps update ${{ steps.app-id.outputs.app-id }} --spec app-spec.yaml --wait
+            APP_ID=${{ steps.app-id.outputs.app-id }}
+          fi
+          
+          # Get app URL
+          APP_URL=$(doctl apps get $APP_ID --format LiveURL --no-header)
+          echo "app-url=$APP_URL" >> $GITHUB_OUTPUT
+          echo "app-id=$APP_ID" >> $GITHUB_OUTPUT
+      
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for deployment to complete..."
+          sleep 30
+          
+          # Check deployment status
+          MAX_ATTEMPTS=20
+          ATTEMPT=0
+          
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            STATUS=$(doctl apps get ${{ steps.deploy.outputs.app-id }} --format ActiveDeployment.Phase --no-header)
+            
+            if [ "$STATUS" = "ACTIVE" ]; then
+              echo "Deployment successful!"
+              break
+            elif [ "$STATUS" = "ERROR" ]; then
+              echo "Deployment failed!"
+              exit 1
+            else
+              echo "Deployment status: $STATUS. Waiting..."
+              sleep 30
+              ATTEMPT=$((ATTEMPT + 1))
+            fi
+          done
+          
+          if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+            echo "Deployment timed out!"
+            exit 1
+          fi
+
+  # Job 4: Post-deployment verification
+  verify:
+    name: Verify Deployment
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: success()
+    
+    steps:
+      - name: Check application health
+        run: |
+          APP_URL="${{ needs.deploy.outputs.app-url }}"
+          echo "Checking health at: $APP_URL/api/health"
+          
+          # Wait for app to be ready
+          sleep 60
+          
+          # Check health endpoint
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/api/health")
+          
+          if [ $HTTP_CODE -eq 200 ]; then
+            echo "✅ Application is healthy!"
+          else
+            echo "❌ Health check failed with status code: $HTTP_CODE"
+            exit 1
+          fi
+      
+      - name: Run smoke tests
+        run: |
+          APP_URL="${{ needs.deploy.outputs.app-url }}"
+          
+          # Test authentication endpoint
+          echo "Testing authentication endpoint..."
+          AUTH_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$APP_URL/api/auth/login" \
+            -H "Content-Type: application/json" \
+            -d '{"email":"test@test.com","password":"test"}')
+          
+          if [ $AUTH_CODE -eq 401 ] || [ $AUTH_CODE -eq 400 ]; then
+            echo "✅ Auth endpoint responding correctly"
+          else
+            echo "❌ Auth endpoint returned unexpected status: $AUTH_CODE"
+          fi
+      
+      - name: Notify deployment status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ job.status }}';
+            const appUrl = '${{ needs.deploy.outputs.app-url }}';
+            const environment = '${{ github.event.inputs.environment || 'production' }}';
+            
+            const message = status === 'success' 
+              ? `✅ Deployment to ${environment} successful!\n\nApp URL: ${appUrl}`
+              : `❌ Deployment to ${environment} failed!`;
+            
+            github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: message
+            });
+
+  # Job 5: Cleanup old images (runs on schedule)
+  cleanup:
+    name: Cleanup Old Images
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: verify
+    
+    steps:
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+      
+      - name: Run garbage collection
+        run: |
+          # Keep only the last 5 images
+          doctl registry repository list-tags ${{ env.IMAGE_NAME }} --format Tag,UpdatedAt --no-header | \
+            sort -k2 -r | \
+            tail -n +6 | \
+            awk '{print $1}' | \
+            while read tag; do
+              echo "Deleting old image tag: $tag"
+              doctl registry repository delete-tag ${{ env.IMAGE_NAME }} $tag --force
+            done
+          
+          # Run garbage collection
+          doctl registry garbage-collection start --force

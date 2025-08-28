@@ -14,12 +14,13 @@ export default defineConfig({
       enabled: false
     },
     css: false,
-    pool: 'forks',
+    pool: 'threads',
     poolOptions: {
-      forks: {
-        singleFork: true
+      threads: {
+        singleThread: true
       }
     },
+    retry: 0,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -33,13 +34,14 @@ export default defineConfig({
         '**/coverage/**',
         'client/src/main.tsx',
         'server/index.ts',
+        '**/mockData/**'
       ],
       thresholds: {
         global: {
-          branches: 70,
-          functions: 70,
-          lines: 70,
-          statements: 70,
+          branches: 85,
+          functions: 85,
+          lines: 85,
+          statements: 85,
         },
       },
     },
@@ -47,7 +49,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './client/src'),
+      '@client': path.resolve(__dirname, './client/src'),
+      '@server': path.resolve(__dirname, './server'),
       '@shared': path.resolve(__dirname, './shared'),
+      '@test': path.resolve(__dirname, './test'),
     },
   },
 });

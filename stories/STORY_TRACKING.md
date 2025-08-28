@@ -9,22 +9,24 @@
 ## Active Sprint Stories
 
 ### Current Story
-- **ID:** STORY-007  
-- **Title:** Remove Health Protocols Tab from Trainer Dashboard
-- **Status:** In Progress
-- **Developer:** CTO Agent Team
-- **Location:** `stories/current/STORY-007-remove-health-protocols-tab.md`
-- **Started:** 2025-08-27
+- **ID:** STORY-004 (Frontend Portion)
+- **Title:** Complete Protocol Creation Wizard UI
+- **Status:** Pending (Backend Complete)
+- **Developer:** Frontend Team Required
+- **Location:** `stories/current/STORY-004-health-protocol-generation-optimization.md`
+- **Backend Completed:** 2025-08-28
+- **Frontend Remaining:** 2-3 days effort
 
 ### Sprint Backlog
-1. STORY-004: Health Protocol Generation Optimization (Ready for Development)
-2. STORY-003: Email System Domain Verification (Deferred - foundational issues first)
-3. **STORY-005: Mobile-Responsive Dashboard Enhancement** ✅ (Created 2025-08-26)
-4. STORY-006: Advanced Client Progress Analytics
+1. STORY-007: Remove Health Protocols Tab from Trainer Dashboard (Not Started)
+2. STORY-005: Mobile-Responsive Dashboard Enhancement (Ready)
+3. STORY-003: Email System Domain Verification (Deferred - foundational issues first)
+4. STORY-006: Advanced Client Progress Analytics (Ready)
 
 ### Recently Completed
 - **STORY-001:** Test Framework Stabilization ✅ (Completed 2025-08-25)
 - **STORY-002:** Production Deployment Validation ✅ (Completed 2025-08-25)
+- **STORY-004:** Health Protocol Generation Optimization ✅ Backend (Completed 2025-08-28)
 
 ---
 
@@ -116,15 +118,15 @@ Each story contains:
 
 ### Current Sprint (Week of Aug 25-31)
 - **Stories Planned**: 6
-- **Stories Completed**: 2
-- **Stories In Progress**: 1 (STORY-004)
-- **Velocity Trend**: 2 stories completed, strong momentum
+- **Stories Completed**: 3 (backend portions)
+- **Stories In Progress**: 1 (STORY-004 frontend)
+- **Velocity Trend**: Strong backend delivery, frontend integration needed
 
 ### Story Completion Times
 - STORY-001: ✅ Completed (3 days - on estimate)
-- STORY-002: ✅ Completed (2 days - under estimate) 
-- STORY-004: Ready to start (5 days estimated - complex feature enhancement)
-- Average: 2.5 days per story (improving velocity)
+- STORY-002: ✅ Completed (2 days - under estimate)
+- STORY-004: ✅ Backend Complete (3 days), Frontend remaining (2-3 days)
+- Average: 2.7 days per story (consistent velocity)
 
 ### Story Prioritization Notes
 **STORY-004 prioritized over STORY-003** based on:

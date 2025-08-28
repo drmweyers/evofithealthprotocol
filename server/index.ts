@@ -22,6 +22,7 @@ import passwordRoutes from './passwordRoutes';
 import invitationRoutes from './invitationRoutes';
 import specializedRoutes from './routes/specializedRoutes';
 import protocolRoutes from './routes/protocolRoutes';
+import roleTestRoutes from './routes/roleTestRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -83,9 +84,11 @@ app.use('/api/progress', progressRoutes);
 app.use('/api/pdf', pdfRoutes);
 app.use('/api/specialized', specializedRoutes);
 app.use('/api/protocols', protocolRoutes);
+app.use('/api/roles', roleTestRoutes);
 
 console.log('✅ All API routes registered');
 console.log('✅ Protocol optimization routes registered');
+console.log('✅ Role hierarchy routes registered');
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

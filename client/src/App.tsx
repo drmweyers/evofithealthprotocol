@@ -33,8 +33,8 @@ const PrivateRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
+    <Router>
+      <AuthProvider>
         <div className="min-h-screen bg-gray-50">
           <Toaster position="top-right" />
           <Routes>
@@ -58,8 +58,8 @@ function App() {
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </div>
-      </Router>
-    </AuthProvider>
+      </AuthProvider>
+    </Router>
   );
 }
 

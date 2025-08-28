@@ -42,6 +42,7 @@ export interface LongevityModeConfig {
     antioxidantFoods: number; // Daily servings of high-antioxidant foods
     omega3Sources: number;    // Weekly servings of omega-3 rich foods
   };
+  _protocolGenerated?: boolean; // Internal tracking flag
 }
 
 // ===== PARASITE CLEANSE TYPES =====
@@ -74,6 +75,7 @@ export interface ParasiteCleanseConfig {
     fiberRich: string[];       // To aid elimination
     excludeFoods: string[];    // Sugar, processed foods, etc.
   };
+  _protocolGenerated?: boolean; // Internal tracking flag
 }
 
 // ===== SHARED PROTOCOL TYPES =====
@@ -184,7 +186,7 @@ export interface ParasiteCleanseFormData {
   intensity: CleanseIntensity;
   includeHerbalSupplements: boolean;
   dietOnlyCleanse: boolean;
-  startDate: string; // ISO date string for forms
+  startDate?: string; // ISO date string for forms, optional
   antiParasiticFoods: string[];
   probioticFoods: string[];
   fiberRichFoods: string[];
@@ -301,6 +303,7 @@ export interface ClientAilmentsConfig {
   } | null;
   includeInMealPlanning: boolean;
   priorityLevel: 'low' | 'medium' | 'high';
+  _protocolGenerated?: boolean; // Internal tracking flag
 }
 
 export interface ClientAilmentsSelectorProps {

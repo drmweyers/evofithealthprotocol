@@ -68,11 +68,31 @@
       "Bash(chmod:*)",
       "Bash(npm audit:*)",
       "Bash(POSTGRES_USER=postgres POSTGRES_PASSWORD=postgres POSTGRES_DB=evofithealthprotocol_db docker-compose --profile dev up -d)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(gh repo create:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(taskkill:*)",
+      "Bash(Get-Process node)",
+      "Bash(NODE_ENV=production PORT=5000 npx tsx --env-file=.env server/index.ts)",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(NODE_ENV=development npx tsx --env-file=.env server/index.ts)",
+      "Bash(git restore:*)",
+      "Bash(git rm:*)",
+      "Bash(git reset:*)",
+      "Bash(git log:*)",
+      "mcp__github__get_file_contents",
+      "Bash(gh repo view:*)",
+      "Bash(gh repo edit:*)",
+      "Bash(npm search:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "Bash(vite build)"
     ],
     "deny": [],
     "additionalDirectories": [
-      "C:\\c\\Users\\drmwe\\claude-workspace"
+      "C:\\c\\Users\\drmwe\\claude-workspace",
+      "C:\\"
     ]
   },
   "enableAllProjectMcpServers": true,

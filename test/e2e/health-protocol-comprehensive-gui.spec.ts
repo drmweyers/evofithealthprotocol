@@ -13,7 +13,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const TEST_CONFIG = {
-  baseURL: 'http://localhost:4000',
+  baseURL: 'http://localhost:3500',
   screenshots: {
     path: path.join(__dirname, '../../screenshots/health-protocols'),
     enabled: true

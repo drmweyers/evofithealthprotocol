@@ -59,6 +59,18 @@ export class CacheManager {
   }
 
   /**
+   * Invalidate health protocol related caches
+   */
+  async invalidateProtocols(): Promise<void> {
+    console.log('🔄 Invalidating health protocol caches...');
+    
+    await this.queryClient.invalidateQueries({ queryKey: ['/api/health-protocols'] });
+    await this.queryClient.invalidateQueries({ queryKey: ['adminHealthProtocols'] });
+    
+    console.log('✅ Health protocol caches invalidated');
+  }
+
+  /**
    * Complete cache refresh - use for major operations
    * This is more aggressive and refreshes everything
    */

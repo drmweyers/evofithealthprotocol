@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 import type { User, UserRole, LoginCredentials, RegisterCredentials, AuthContextValue } from '../types/auth';
 
 const API_BASE_URL = '/api';
@@ -43,7 +43,7 @@ function normalizeAuthResponse(response: AuthResponse): { token: string; user: U
 export function AuthProvider({ children }: AuthProviderProps) {
   const queryClient = useQueryClient();
   const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem('token'));
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
 
   // Handle token refresh
   const refreshToken = async (): Promise<string | null> => {
@@ -111,7 +111,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       queryClient.setQueryData([`${API_BASE_URL}/auth/me`], null);
 
       // Navigate to login
-      navigate('/login');
+      navigate('/');
     }
   };
 

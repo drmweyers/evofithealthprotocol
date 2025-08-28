@@ -414,8 +414,8 @@ export default function CustomerProfile() {
                   <div>
                     <Label className="text-xs sm:text-sm font-medium text-slate-600">Fitness Goals</Label>
                     <div className="flex flex-wrap gap-1 sm:gap-2 mt-1 sm:mt-2">
-                      {profile?.fitnessGoals && profile.fitnessGoals.length > 0 ? (
-                        profile.fitnessGoals.map((goal, index) => (
+                      {(profile as any)?.fitnessGoals && (profile as any).fitnessGoals.length > 0 ? (
+                        (profile as any).fitnessGoals.map((goal: string, index: number) => (
                           <Badge key={index} variant="outline" className="bg-blue-50 text-blue-700 text-xs">
                             <Target className="w-2 h-2 sm:w-3 sm:h-3 mr-1" />
                             {goal}
@@ -430,8 +430,8 @@ export default function CustomerProfile() {
                   <div>
                     <Label className="text-xs sm:text-sm font-medium text-slate-600">Dietary Restrictions</Label>
                     <div className="flex flex-wrap gap-1 sm:gap-2 mt-1 sm:mt-2">
-                      {profile?.dietaryRestrictions && profile.dietaryRestrictions.length > 0 ? (
-                        profile.dietaryRestrictions.map((restriction, index) => (
+                      {(profile as any)?.dietaryRestrictions && (profile as any).dietaryRestrictions.length > 0 ? (
+                        (profile as any).dietaryRestrictions.map((restriction: string, index: number) => (
                           <Badge key={index} variant="outline" className="bg-red-50 text-red-700 text-xs">
                             {restriction}
                           </Badge>
@@ -445,8 +445,8 @@ export default function CustomerProfile() {
                   <div>
                     <Label className="text-xs sm:text-sm font-medium text-slate-600">Preferred Cuisines</Label>
                     <div className="flex flex-wrap gap-1 sm:gap-2 mt-1 sm:mt-2">
-                      {profile?.preferredCuisines && profile.preferredCuisines.length > 0 ? (
-                        profile.preferredCuisines.map((cuisine, index) => (
+                      {(profile as any)?.preferredCuisines && (profile as any).preferredCuisines.length > 0 ? (
+                        (profile as any).preferredCuisines.map((cuisine: string, index: number) => (
                           <Badge key={index} variant="outline" className="bg-green-50 text-green-700 text-xs">
                             <ChefHat className="w-2 h-2 sm:w-3 sm:h-3 mr-1" />
                             {cuisine}
@@ -550,13 +550,13 @@ export default function CustomerProfile() {
                     <Label htmlFor="fitnessGoals" className="text-xs sm:text-sm">Fitness Goals (comma-separated)</Label>
                     <Input
                       id="fitnessGoals"
-                      value={editForm.fitnessGoals}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, fitnessGoals: e.target.value }))}
+                      value={(editForm as any).fitnessGoals || ''}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, fitnessGoals: e.target.value } as any))}
                       className="mt-1 h-9 sm:h-10 text-sm"
                       placeholder="Weight Loss, Muscle Gain..."
                     />
                     <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                      Suggestions: {commonFitnessGoals.slice(0, 5).join(', ')}...
+                      Suggestions: Weight Loss, Muscle Gain, Endurance, Strength...
                     </p>
                   </div>
                   
@@ -564,13 +564,13 @@ export default function CustomerProfile() {
                     <Label htmlFor="dietaryRestrictions" className="text-xs sm:text-sm">Dietary Restrictions (comma-separated)</Label>
                     <Input
                       id="dietaryRestrictions"
-                      value={editForm.dietaryRestrictions}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, dietaryRestrictions: e.target.value }))}
+                      value={(editForm as any).dietaryRestrictions || ''}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, dietaryRestrictions: e.target.value } as any))}
                       className="mt-1 h-9 sm:h-10 text-sm"
                       placeholder="Vegetarian, Gluten-Free..."
                     />
                     <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                      Suggestions: {commonDietaryRestrictions.slice(0, 5).join(', ')}...
+                      Suggestions: Vegetarian, Vegan, Gluten-Free, Dairy-Free...
                     </p>
                   </div>
                   
@@ -578,13 +578,13 @@ export default function CustomerProfile() {
                     <Label htmlFor="preferredCuisines" className="text-xs sm:text-sm">Preferred Cuisines (comma-separated)</Label>
                     <Input
                       id="preferredCuisines"
-                      value={editForm.preferredCuisines}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, preferredCuisines: e.target.value }))}
+                      value={(editForm as any).preferredCuisines || ''}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, preferredCuisines: e.target.value } as any))}
                       className="mt-1 h-9 sm:h-10 text-sm"
                       placeholder="Italian, Mexican, Asian..."
                     />
                     <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                      Suggestions: {commonCuisines.slice(0, 5).join(', ')}...
+                      Suggestions: Italian, Mexican, Asian, Mediterranean...
                     </p>
                   </div>
                   
@@ -646,7 +646,7 @@ export default function CustomerProfile() {
               <div className="text-center p-3 sm:p-4 bg-green-50 rounded-lg">
                 <ChefHat className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mx-auto mb-2" />
                 <div className="text-xl sm:text-2xl font-bold text-slate-900">
-                  {statsLoading ? '...' : stats?.totalMealPlans || 0}
+                  {statsLoading ? '...' : (stats as any)?.totalMealPlans || 0}
                 </div>
                 <div className="text-xs sm:text-sm text-slate-600">Meal Plans</div>
               </div>
@@ -655,7 +655,7 @@ export default function CustomerProfile() {
                 <div className="text-center p-2 sm:p-3 bg-blue-50 rounded-lg">
                   <Calendar className="w-4 h-4 sm:w-6 sm:h-6 text-blue-600 mx-auto mb-1" />
                   <div className="text-base sm:text-lg font-bold text-slate-900">
-                    {statsLoading ? '...' : stats?.completedDays || 0}
+                    {statsLoading ? '...' : (stats as any)?.completedDays || 0}
                   </div>
                   <div className="text-xs text-slate-600">Days Done</div>
                 </div>
@@ -705,7 +705,7 @@ export default function CustomerProfile() {
                   {stats && (
                     <div className="flex justify-between">
                       <span className="text-slate-600">Avg Calories:</span>
-                      <span className="font-medium text-slate-900">{stats.avgCaloriesPerDay}</span>
+                      <span className="font-medium text-slate-900">{(stats as any).avgCaloriesPerDay || 'N/A'}</span>
                     </div>
                   )}
                 </div>
@@ -727,13 +727,13 @@ export default function CustomerProfile() {
                   <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <div className="text-center p-3 bg-blue-50 rounded-lg">
                       <div className="text-lg sm:text-xl font-bold text-blue-600">
-                        {stats.totalMealPlans}
+                        {(stats as any).totalMealPlans || 0}
                       </div>
                       <div className="text-xs sm:text-sm text-blue-700">Active Plans</div>
                     </div>
                     <div className="text-center p-3 bg-green-50 rounded-lg">
                       <div className="text-lg sm:text-xl font-bold text-green-600">
-                        {stats.completedDays}
+                        {(stats as any).completedDays || 0}
                       </div>
                       <div className="text-xs sm:text-sm text-green-700">Days Completed</div>
                     </div>

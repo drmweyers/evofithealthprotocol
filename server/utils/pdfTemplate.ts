@@ -6,13 +6,10 @@
 
 import ejs from 'ejs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import dayjs from 'dayjs';
 import { readFileSync } from 'fs';
-import url from 'url';
 
-// Get current module directory for ES modules
-const __filename = fileURLToPath(import.meta.url);
+// Get current module directory for CommonJS
 const __dirname = path.dirname(__filename);
 
 export interface MealPlanPdfData {

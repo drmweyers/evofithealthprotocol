@@ -18,10 +18,9 @@ import {
   User, 
   Target, 
   Calendar, 
-  ChefHat,
+  Heart,
   TrendingUp,
   Scale,
-  Heart,
   Activity,
   Camera,
   Plus,
@@ -35,8 +34,6 @@ interface Customer {
   email: string;
   firstAssignedAt: string;
 }
-
-// CustomerMealPlan interface removed - meal plan functionality deprecated
 
 interface ProgressMeasurement {
   id: string;
@@ -68,21 +65,30 @@ interface CustomerGoal {
   achievedDate?: string;
 }
 
+interface HealthProtocolAssignment {
+  id: string;
+  customerId: string;
+  trainerId: string;
+  protocolData: any;
+  assignedAt: string;
+  status: string;
+}
+
 interface CustomerDetailViewProps {
   customer: Customer;
   onBack: () => void;
 }
 
 export default function CustomerDetailView({ customer, onBack }: CustomerDetailViewProps) {
-  const [showMealPlanGenerator, setShowMealPlanGenerator] = useState(false);
+  const [showProtocolGenerator, setShowProtocolGenerator] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch customer's assigned meal plans
-  const { data: mealPlansData, isLoading: mealPlansLoading } = useQuery<{ mealPlans: CustomerMealPlan[]; total: number }>({
-    queryKey: ['customerMealPlans', customer.id],
+  // Fetch customer's assigned health protocols
+  const { data: protocolsData, isLoading: protocolsLoading } = useQuery<{ protocols: HealthProtocolAssignment[]; total: number }>({
+    queryKey: ['customerProtocols', customer.id],
     queryFn: async () => {
-      const res = await apiRequest('GET', `/api/trainer/customers/${customer.id}/meal-plans`);
+      const res = await apiRequest('GET', `/api/trainer/customers/${customer.id}/protocols`);
       return res.json();
     }
   });
@@ -105,15 +111,21 @@ export default function CustomerDetailView({ customer, onBack }: CustomerDetailV
     }
   });
 
-  const mealPlans = mealPlansData?.mealPlans || [];
+  const protocols = protocolsData?.protocols || [];
   const measurements = measurementsData?.data || [];
   const goals = goalsData?.data || [];
-  const latestMeasurement = measurements[0]; // Assuming sorted by date desc
 
-  // Get customer health metrics summary
   const getHealthMetrics = () => {
-    if (!latestMeasurement) return undefined;
-    
+    if (measurements.length === 0) {
+      return {
+        weight: 'Not recorded',
+        bodyFat: 'Not recorded',
+        waist: 'Not recorded',
+        lastUpdated: 'No measurements'
+      };
+    }
+
+    const latestMeasurement = measurements[0]; // Assuming sorted by date
     return {
       weight: latestMeasurement.weightLbs ? `${latestMeasurement.weightLbs} lbs` : 
               latestMeasurement.weightKg ? `${latestMeasurement.weightKg} kg` : 'Not recorded',
@@ -125,9 +137,9 @@ export default function CustomerDetailView({ customer, onBack }: CustomerDetailV
 
   const healthMetrics = getHealthMetrics();
 
-  // Handle meal plan creation with customer context
-  const handleCreateMealPlan = () => {
-    // Set customer context for meal plan generator
+  // Handle health protocol creation with customer context
+  const handleCreateProtocol = () => {
+    // Set customer context for health protocol generator
     const customerContext = {
       customerId: customer.id,
       customerEmail: customer.email,
@@ -136,127 +148,73 @@ export default function CustomerDetailView({ customer, onBack }: CustomerDetailV
       recentMeasurements: measurements.slice(0, 3)
     };
     
-    // Store context for meal plan generator
+    // Store context for protocol generator
     sessionStorage.setItem('customerContext', JSON.stringify(customerContext));
-    setShowMealPlanGenerator(true);
+    setShowProtocolGenerator(true);
   };
 
-  const handleMealPlanCreated = (mealPlan: MealPlan) => {
-    // Auto-assign the new meal plan to this customer
-    assignMealToCustomer(mealPlan);
-    setShowMealPlanGenerator(false);
+  const handleProtocolCreated = (protocol: any) => {
+    // Auto-assign the new protocol to this customer
+    assignProtocolToCustomer(protocol);
+    setShowProtocolGenerator(false);
     sessionStorage.removeItem('customerContext');
   };
 
-  // Mutation to assign meal plan to customer
-  const assignMealPlanMutation = useMutation({
-    mutationFn: async (mealPlanData: MealPlan) => {
-      const res = await apiRequest('POST', `/api/trainer/customers/${customer.id}/meal-plans`, {
-        mealPlanData
+  // Mutation to assign health protocol to customer
+  const assignProtocolMutation = useMutation({
+    mutationFn: async (protocolData: any) => {
+      const res = await apiRequest('POST', `/api/trainer/customers/${customer.id}/protocols`, {
+        protocolData
       });
       return res.json();
     },
     onSuccess: () => {
       toast({
-        title: "Meal Plan Created & Assigned",
-        description: `Successfully created and assigned a personalized meal plan to ${customer.email}`,
+        title: "Health Protocol Created & Assigned",
+        description: `Successfully created and assigned a personalized health protocol to ${customer.email}`,
       });
-      queryClient.invalidateQueries({ queryKey: ['customerMealPlans', customer.id] });
+      queryClient.invalidateQueries({ queryKey: ['customerProtocols', customer.id] });
       queryClient.invalidateQueries({ queryKey: ['trainerCustomers'] });
     },
     onError: (error: any) => {
       toast({
         title: "Assignment Failed",
-        description: error.message || "Failed to assign meal plan",
+        description: error.message || "Failed to assign health protocol",
         variant: "destructive",
       });
     }
   });
 
-  const assignMealToCustomer = (mealPlan: MealPlan) => {
-    assignMealPlanMutation.mutate(mealPlan);
+  const assignProtocolToCustomer = (protocol: any) => {
+    assignProtocolMutation.mutate(protocol);
   };
 
-  if (showMealPlanGenerator) {
+  if (showProtocolGenerator) {
     return (
       <div className="space-y-6">
         <div className="flex items-center space-x-4">
           <Button 
             variant="outline" 
-            onClick={() => setShowMealPlanGenerator(false)}
+            onClick={() => setShowProtocolGenerator(false)}
             className="flex items-center space-x-2"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span>Back to {customer.email}</span>
+            <span>Back to Customer Details</span>
           </Button>
-          <div>
-            <h2 className="text-xl font-bold">Create Meal Plan for {customer.email}</h2>
-            <p className="text-sm text-gray-600">
-              Use the customer's health metrics and goals below to create a personalized meal plan
-            </p>
-          </div>
+          <h1 className="text-2xl font-bold">Create Health Protocol for {customer.email}</h1>
         </div>
-
-        {/* Customer Context Card */}
-        <Card className="bg-blue-50 border-blue-200">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-blue-800">
-              <User className="h-5 w-5" />
-              <span>Customer Context</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {healthMetrics && (
-                <>
-                  <div className="text-center">
-                    <Scale className="h-5 w-5 mx-auto mb-1 text-blue-600" />
-                    <div className="text-sm font-medium">Weight</div>
-                    <div className="text-lg">{healthMetrics.weight}</div>
-                  </div>
-                  <div className="text-center">
-                    <Activity className="h-5 w-5 mx-auto mb-1 text-blue-600" />
-                    <div className="text-sm font-medium">Body Fat</div>
-                    <div className="text-lg">{healthMetrics.bodyFat}</div>
-                  </div>
-                  <div className="text-center">
-                    <Target className="h-5 w-5 mx-auto mb-1 text-blue-600" />
-                    <div className="text-sm font-medium">Waist</div>
-                    <div className="text-lg">{healthMetrics.waist}</div>
-                  </div>
-                </>
-              )}
-              <div className="text-center">
-                <Heart className="h-5 w-5 mx-auto mb-1 text-blue-600" />
-                <div className="text-sm font-medium">Active Goals</div>
-                <div className="text-lg">{goals.filter(g => g.status === 'active').length}</div>
-              </div>
-            </div>
-            
-            {goals.filter(g => g.status === 'active').length > 0 && (
-              <div>
-                <h4 className="font-medium text-blue-800 mb-2">Active Goals:</h4>
-                <div className="flex flex-wrap gap-2">
-                  {goals.filter(g => g.status === 'active').map(goal => (
-                    <Badge key={goal.id} variant="outline" className="bg-white">
-                      {goal.goalName} ({goal.progressPercentage}%)
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
+        {/* Protocol generator component would go here */}
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground">Health Protocol Generator Coming Soon...</p>
+            <Button 
+              className="mt-4" 
+              onClick={() => setShowProtocolGenerator(false)}
+            >
+              Back to Customer View
+            </Button>
           </CardContent>
         </Card>
-
-        <MealPlanGenerator 
-          onMealPlanGenerated={handleMealPlanCreated}
-          customerContext={{
-            customerId: customer.id,
-            customerEmail: customer.email,
-            healthMetrics,
-            goals: goals.filter(g => g.status === 'active')
-          }}
-        />
       </div>
     );
   }
@@ -266,389 +224,257 @@ export default function CustomerDetailView({ customer, onBack }: CustomerDetailV
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={onBack} className="flex items-center space-x-2">
+          <Button 
+            variant="outline" 
+            onClick={onBack}
+            className="flex items-center space-x-2"
+          >
             <ArrowLeft className="h-4 w-4" />
-            <span>Back to Customers</span>
+            <span>Back</span>
           </Button>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">{customer.email}</h2>
-            <p className="text-gray-600">
+            <h1 className="text-2xl font-bold flex items-center space-x-2">
+              <User className="h-6 w-6" />
+              <span>{customer.email}</span>
+            </h1>
+            <p className="text-muted-foreground">
               Customer since {new Date(customer.firstAssignedAt).toLocaleDateString()}
             </p>
           </div>
         </div>
-        <Button onClick={handleCreateMealPlan} className="bg-green-600 hover:bg-green-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Create New Meal Plan
-        </Button>
+
+        <div className="flex items-center space-x-2">
+          <SimplePDFExportButton 
+            customerId={customer.id}
+            customerEmail={customer.email}
+            data={{
+              protocols,
+              healthMetrics,
+              goals: goals.filter(g => g.status === 'active'),
+              measurements: measurements.slice(0, 5)
+            }}
+          />
+          <Button 
+            onClick={handleCreateProtocol}
+            className="flex items-center space-x-2"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Create Health Protocol</span>
+          </Button>
+        </div>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
+      {/* Customer Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Assigned Protocols</CardTitle>
+            <Zap className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{protocols.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Active health protocols
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Current Weight</CardTitle>
+            <Scale className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{healthMetrics.weight}</div>
+            <p className="text-xs text-muted-foreground">
+              Last updated: {healthMetrics.lastUpdated}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Body Fat</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{healthMetrics.bodyFat}</div>
+            <p className="text-xs text-muted-foreground">
+              Current measurement
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Goals</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{goals.filter(g => g.status === 'active').length}</div>
+            <p className="text-xs text-muted-foreground">
+              In progress
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Detailed Tabs */}
+      <Tabs defaultValue="protocols" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="meal-plans">Meal Plans ({mealPlans.length})</TabsTrigger>
-          <TabsTrigger value="health-metrics">Health Metrics</TabsTrigger>
-          <TabsTrigger value="goals">Goals ({goals.length})</TabsTrigger>
+          <TabsTrigger value="protocols">Health Protocols</TabsTrigger>
+          <TabsTrigger value="measurements">Measurements</TabsTrigger>
+          <TabsTrigger value="goals">Goals</TabsTrigger>
+          <TabsTrigger value="progress">Progress</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4 text-center">
-                <ChefHat className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-                <div className="text-2xl font-bold">{mealPlans.length}</div>
-                <div className="text-sm text-gray-600">Meal Plans</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <Target className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                <div className="text-2xl font-bold">{goals.filter(g => g.status === 'active').length}</div>
-                <div className="text-sm text-gray-600">Active Goals</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <TrendingUp className="h-8 w-8 mx-auto mb-2 text-purple-600" />
-                <div className="text-2xl font-bold">{measurements.length}</div>
-                <div className="text-sm text-gray-600">Measurements</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <Zap className="h-8 w-8 mx-auto mb-2 text-orange-600" />
-                <div className="text-2xl font-bold">
-                  {goals.filter(g => g.status === 'achieved').length}
-                </div>
-                <div className="text-sm text-gray-600">Goals Achieved</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Latest Health Metrics */}
-          {healthMetrics && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Activity className="h-5 w-5" />
-                  <span>Latest Health Metrics</span>
-                  <Badge variant="outline">{healthMetrics.lastUpdated}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="text-center">
-                    <Scale className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-                    <div className="text-sm font-medium text-gray-600">Weight</div>
-                    <div className="text-xl font-bold">{healthMetrics.weight}</div>
-                  </div>
-                  <div className="text-center">
-                    <Heart className="h-6 w-6 mx-auto mb-2 text-red-600" />
-                    <div className="text-sm font-medium text-gray-600">Body Fat</div>
-                    <div className="text-xl font-bold">{healthMetrics.bodyFat}</div>
-                  </div>
-                  <div className="text-center">
-                    <Target className="h-6 w-6 mx-auto mb-2 text-green-600" />
-                    <div className="text-sm font-medium text-gray-600">Waist</div>
-                    <div className="text-xl font-bold">{healthMetrics.waist}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Recent Meal Plans */}
+        <TabsContent value="protocols" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <ChefHat className="h-5 w-5" />
-                  <span>Recent Meal Plans</span>
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleCreateMealPlan}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Create
-                </Button>
+              <CardTitle className="flex items-center space-x-2">
+                <Zap className="h-5 w-5" />
+                <span>Assigned Health Protocols</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {mealPlansLoading ? (
-                <div className="space-y-3">
-                  {[1, 2].map((i) => (
-                    <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
-                  ))}
-                </div>
-              ) : mealPlans.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <ChefHat className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                  <p>No meal plans assigned yet</p>
+              {protocolsLoading ? (
+                <p>Loading protocols...</p>
+              ) : protocols.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No health protocols assigned yet.</p>
                   <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="mt-2"
-                    onClick={handleCreateMealPlan}
+                    className="mt-4" 
+                    onClick={handleCreateProtocol}
                   >
-                    Create First Meal Plan
+                    Create First Protocol
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {mealPlans.slice(0, 3).map((assignment) => (
-                    <div key={assignment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex-1">
-                        <h5 className="font-medium">{assignment.mealPlanData.planName}</h5>
-                        <p className="text-sm text-gray-600">
-                          Assigned {new Date(assignment.assignedAt).toLocaleDateString()}
-                        </p>
+                  {protocols.map((protocol) => (
+                    <div key={protocol.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <Badge variant="outline">{protocol.status}</Badge>
+                        <div>
+                          <p className="font-medium">Health Protocol</p>
+                          <p className="text-sm text-muted-foreground">
+                            Assigned {new Date(protocol.assignedAt).toLocaleDateString()}
+                          </p>
+                        </div>
                       </div>
-                      <SimplePDFExportButton
-                        mealPlan={assignment}
-                        className="text-blue-600 hover:text-blue-700"
-                        size="sm"
-                      />
                     </div>
                   ))}
-                  {mealPlans.length > 3 && (
-                    <p className="text-center text-sm text-gray-500">
-                      And {mealPlans.length - 3} more meal plans...
-                    </p>
-                  )}
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="meal-plans" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium">Assigned Meal Plans ({mealPlans.length})</h3>
-            <Button onClick={handleCreateMealPlan} className="bg-green-600 hover:bg-green-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Create New Plan
-            </Button>
-          </div>
-
-          {mealPlansLoading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-24 bg-gray-100 rounded-lg animate-pulse" />
-              ))}
-            </div>
-          ) : mealPlans.length === 0 ? (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <ChefHat className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Meal Plans Yet</h3>
-                <p className="text-gray-600 mb-4">
-                  Create a personalized meal plan for {customer.email} based on their health metrics and goals.
-                </p>
-                <Button onClick={handleCreateMealPlan} className="bg-green-600 hover:bg-green-700">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create First Meal Plan
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {mealPlans.map((assignment) => (
-                <Card key={assignment.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h5 className="text-lg font-medium text-gray-900 mb-2">
-                          {assignment.mealPlanData.planName}
-                        </h5>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                          <div>
-                            <div className="text-sm text-gray-600">Goal</div>
-                            <div className="text-sm font-medium">
-                              {assignment.mealPlanData.fitnessGoal?.replace('_', ' ')}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-600">Duration</div>
-                            <div className="text-sm font-medium">{assignment.mealPlanData.days} days</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-600">Calories/Day</div>
-                            <div className="text-sm font-medium">{assignment.mealPlanData.dailyCalorieTarget}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-600">Assigned</div>
-                            <div className="text-sm font-medium">
-                              {new Date(assignment.assignedAt).toLocaleDateString()}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex space-x-2 ml-4">
-                        <SimplePDFExportButton
-                          mealPlan={assignment}
-                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                          size="sm"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="health-metrics" className="space-y-4">
-          <h3 className="text-lg font-medium">Health Metrics & Progress</h3>
-          {measurementsLoading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-20 bg-gray-100 rounded-lg animate-pulse" />
-              ))}
-            </div>
-          ) : measurements.length === 0 ? (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Scale className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Measurements Yet</h3>
-                <p className="text-gray-600">
-                  The customer hasn't recorded any measurements yet.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {measurements.map((measurement) => (
-                <Card key={measurement.id}>
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h5 className="font-medium">
+        <TabsContent value="measurements" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Scale className="h-5 w-5" />
+                <span>Progress Measurements</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {measurementsLoading ? (
+                <p>Loading measurements...</p>
+              ) : measurements.length === 0 ? (
+                <div className="text-center py-8">
+                  <Scale className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No measurements recorded yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {measurements.map((measurement) => (
+                    <div key={measurement.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="space-y-1">
+                        <p className="font-medium">
                           {new Date(measurement.measurementDate).toLocaleDateString()}
-                        </h5>
-                        <p className="text-sm text-gray-600">
-                          Recorded {new Date(measurement.createdAt).toLocaleDateString()}
                         </p>
+                        <div className="text-sm text-muted-foreground space-x-4">
+                          {measurement.weightLbs && <span>Weight: {measurement.weightLbs} lbs</span>}
+                          {measurement.bodyFatPercentage && <span>Body Fat: {measurement.bodyFatPercentage}%</span>}
+                          {measurement.waistCm && <span>Waist: {measurement.waistCm} cm</span>}
+                        </div>
+                        {measurement.notes && (
+                          <p className="text-sm text-muted-foreground">{measurement.notes}</p>
+                        )}
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {measurement.weightLbs && (
-                        <div>
-                          <div className="text-sm text-gray-600">Weight</div>
-                          <div className="font-medium">{measurement.weightLbs} lbs</div>
-                        </div>
-                      )}
-                      {measurement.bodyFatPercentage && (
-                        <div>
-                          <div className="text-sm text-gray-600">Body Fat</div>
-                          <div className="font-medium">{measurement.bodyFatPercentage}%</div>
-                        </div>
-                      )}
-                      {measurement.waistCm && (
-                        <div>
-                          <div className="text-sm text-gray-600">Waist</div>
-                          <div className="font-medium">{measurement.waistCm} cm</div>
-                        </div>
-                      )}
-                      {measurement.chestCm && (
-                        <div>
-                          <div className="text-sm text-gray-600">Chest</div>
-                          <div className="font-medium">{measurement.chestCm} cm</div>
-                        </div>
-                      )}
-                    </div>
-                    {measurement.notes && (
-                      <div className="mt-3 pt-3 border-t">
-                        <div className="text-sm text-gray-600">Notes</div>
-                        <div className="text-sm">{measurement.notes}</div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="goals" className="space-y-4">
-          <h3 className="text-lg font-medium">Customer Goals ({goals.length})</h3>
-          {goalsLoading ? (
-            <div className="space-y-4">
-              {[1, 2].map((i) => (
-                <div key={i} className="h-20 bg-gray-100 rounded-lg animate-pulse" />
-              ))}
-            </div>
-          ) : goals.length === 0 ? (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Target className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Goals Set</h3>
-                <p className="text-gray-600">
-                  The customer hasn't set any fitness goals yet.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {goals.map((goal) => (
-                <Card key={goal.id}>
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <h5 className="font-medium">{goal.goalName}</h5>
-                          <Badge 
-                            variant={goal.status === 'achieved' ? 'default' : goal.status === 'active' ? 'secondary' : 'outline'}
-                            className={
-                              goal.status === 'achieved' ? 'bg-green-100 text-green-800' :
-                              goal.status === 'active' ? 'bg-blue-100 text-blue-800' : ''
-                            }
-                          >
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Target className="h-5 w-5" />
+                <span>Customer Goals</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {goalsLoading ? (
+                <p>Loading goals...</p>
+              ) : goals.length === 0 ? (
+                <div className="text-center py-8">
+                  <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No goals set yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {goals.map((goal) => (
+                    <div key={goal.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="space-y-1">
+                        <div className="flex items-center space-x-2">
+                          <p className="font-medium">{goal.goalName}</p>
+                          <Badge variant={goal.status === 'active' ? 'default' : 'secondary'}>
                             {goal.status}
                           </Badge>
                         </div>
-                        <p className="text-sm text-gray-600 mb-3">{goal.description}</p>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                          <div>
-                            <div className="text-gray-600">Target</div>
-                            <div className="font-medium">{goal.targetValue} {goal.targetUnit}</div>
-                          </div>
-                          <div>
-                            <div className="text-gray-600">Current</div>
-                            <div className="font-medium">{goal.currentValue || 'Not set'} {goal.targetUnit}</div>
-                          </div>
-                          <div>
-                            <div className="text-gray-600">Progress</div>
-                            <div className="font-medium">{goal.progressPercentage}%</div>
-                          </div>
-                          <div>
-                            <div className="text-gray-600">Target Date</div>
-                            <div className="font-medium">
-                              {goal.targetDate ? new Date(goal.targetDate).toLocaleDateString() : 'No deadline'}
-                            </div>
-                          </div>
+                        <p className="text-sm text-muted-foreground">
+                          Target: {goal.targetValue} {goal.targetUnit}
+                        </p>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full" 
+                            style={{width: `${goal.progressPercentage}%`}}
+                          ></div>
                         </div>
-                        <div className="mt-3">
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className={`h-2 rounded-full transition-all ${
-                                goal.progressPercentage >= 100 ? 'bg-green-500' :
-                                goal.progressPercentage >= 50 ? 'bg-blue-500' : 'bg-orange-500'
-                              }`}
-                              style={{ width: `${Math.min(goal.progressPercentage, 100)}%` }}
-                            />
-                          </div>
-                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Progress: {goal.progressPercentage}%
+                        </p>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="progress" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Activity className="h-5 w-5" />
+                <span>Overall Progress</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">Progress tracking coming soon...</p>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

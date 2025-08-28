@@ -168,7 +168,7 @@ invitationRouter.post('/send', requireAuth, requireRole('trainer'), async (req: 
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         status: 'error',
-        message: fromZodError(error).toString(),
+        message: fromZodError(error as any).toString(),
         code: 'VALIDATION_ERROR'
       });
     }
@@ -360,7 +360,7 @@ invitationRouter.post('/accept', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         status: 'error',
-        message: fromZodError(error).toString(),
+        message: fromZodError(error as any).toString(),
         code: 'VALIDATION_ERROR'
       });
     }

@@ -71,7 +71,7 @@ import type {
 
 // Validation schema
 const parasiteCleanseSchema = z.object({
-  duration: z.number().refine((val) => [7, 14, 30, 60, 90].includes(val)),
+  duration: z.union([z.literal(7), z.literal(14), z.literal(30), z.literal(60), z.literal(90)]),
   intensity: z.enum(['gentle', 'moderate', 'intensive']),
   includeHerbalSupplements: z.boolean(),
   dietOnlyCleanse: z.boolean(),
@@ -80,7 +80,7 @@ const parasiteCleanseSchema = z.object({
   probioticFoods: z.array(z.string()),
   fiberRichFoods: z.array(z.string()),
   excludeFoods: z.array(z.string()),
-});
+}) satisfies z.ZodType<ParasiteCleanseFormData>;
 
 // Configuration constants
 const CLEANSE_DURATIONS: { value: CleanseDuration; label: string; description: string; recommendation: string }[] = [
@@ -339,7 +339,7 @@ const ParasiteCleanseProtocol: React.FC<ParasiteCleanseProtocolProps> = ({
             )}
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleFormChange)} className="space-y-6">
+              <form onSubmit={form.handleSubmit((data: ParasiteCleanseFormData) => handleFormChange(data))} className="space-y-6">
                 {/* Duration Selection */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">

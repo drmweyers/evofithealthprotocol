@@ -1,34 +1,118 @@
-# Digital Ocean App Platform Configuration
-name: evofithealthprotocol
+# DigitalOcean App Platform Configuration for EvoFit Health Protocol
+name: evofit-health-protocol
+region: nyc1
+
 services:
-- name: web
+- name: api
   source_dir: /
   github:
-    repo: drmweyers/evofithealthprotocol
+    repo: drmweyers/evofithealthprotocol  # Replace with your actual repo
     branch: main
-  run_command: npm start
-  build_command: npm run build
+    deploy_on_push: true
+  
+  build_command: |
+    echo "Installing dependencies..."
+    npm ci
+    echo "Building server..."
+    npm run build:server
+    echo "Build completed successfully"
+  
+  run_command: node server/dist/index.js
+  
   environment_slug: node-js
   instance_count: 1
   instance_size_slug: basic-xxs
-  http_port: 3500
-  routes:
-  - path: /
+  
   health_check:
-    http_path: /health
+    http_path: /api/health
+    initial_delay_seconds: 60
+    period_seconds: 10
+    timeout_seconds: 5
+    success_threshold: 1
+    failure_threshold: 3
+  
+  http_port: 8080
+  
+  routes:
+  - path: /api
+  
   envs:
   - key: NODE_ENV
     value: production
   - key: PORT
-    value: "3500"
+    value: "8080"
+  - key: PDF_EXPORT_ENABLED
+    value: "true"
   - key: DATABASE_URL
-    value: "postgresql://username:password@host:port/database"
+    scope: RUN_AND_BUILD_TIME
     type: SECRET
   - key: JWT_SECRET
-    value: "your-production-jwt-secret-32-chars-minimum"
+    scope: RUN_TIME
     type: SECRET
+  - key: JWT_REFRESH_SECRET
+    scope: RUN_TIME
+    type: SECRET
+  - key: BCRYPT_SALT_ROUNDS
+    value: "12"
+  - key: OPENAI_API_KEY
+    scope: RUN_TIME
+    type: SECRET
+  - key: AWS_ACCESS_KEY_ID
+    scope: RUN_TIME
+    type: SECRET
+  - key: AWS_SECRET_ACCESS_KEY
+    scope: RUN_TIME
+    type: SECRET
+  - key: AWS_REGION
+    value: us-east-1
+  - key: AWS_S3_BUCKET_NAME
+    value: evofit-health-protocol-production
+  - key: EMAIL_HOST
+    value: smtp.gmail.com
+  - key: EMAIL_PORT
+    value: "587"
+  - key: EMAIL_USER
+    scope: RUN_TIME
+    type: SECRET
+  - key: EMAIL_PASS
+    scope: RUN_TIME
+    type: SECRET
+  - key: FRONTEND_URL
+    value: ${frontend.PUBLIC_URL}
+
+static_sites:
+- name: frontend
+  source_dir: /client
+  github:
+    repo: drmweyers/evofithealthprotocol  # Replace with your actual repo
+    branch: main
+    deploy_on_push: true
+  
+  build_command: |
+    echo "Installing client dependencies..."
+    npm ci
+    echo "Building React application..."
+    npm run build
+    echo "Frontend build completed successfully"
+  
+  output_dir: dist
+  
+  environment_slug: node-js
+  
+  routes:
+  - path: /
+  
+  envs:
+  - key: VITE_API_URL
+    value: ${api.PUBLIC_URL}
+  - key: NODE_ENV
+    value: production
+
 databases:
 - name: evofithealthprotocol-db
   engine: PG
-  version: "14"
-  size: basic
+  version: "15"
+  production: true
+  cluster_name: evofithealthprotocol-cluster
+  db_name: evofithealthprotocol_db
+  db_user: evofithealthprotocol_user

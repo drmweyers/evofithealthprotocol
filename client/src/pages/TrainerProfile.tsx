@@ -638,7 +638,7 @@ export default function TrainerProfile() {
                         </div>
                       </div>
                       <PDFExportButton
-                        mealPlans={allCustomerMealPlans.flatMap(customer => customer.mealPlans)}
+                        data={allCustomerMealPlans.flatMap(customer => customer.mealPlans)}
                         variant="outline"
                         size="sm"
                       >
@@ -659,8 +659,8 @@ export default function TrainerProfile() {
                               </div>
                             </div>
                             <PDFExportButton
-                              mealPlans={customerData.mealPlans}
-                              customerName={customerData.customer.email}
+                              data={customerData.mealPlans}
+                              customerEmail={customerData.customer.email}
                               variant="ghost"
                               size="sm"
                             >

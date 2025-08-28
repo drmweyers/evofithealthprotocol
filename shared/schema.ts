@@ -425,7 +425,7 @@ export type ProtocolAssignment = typeof protocolAssignments.$inferSelect;
 export const createHealthProtocolSchema = z.object({
   name: z.string().min(1).max(255),
   description: z.string().optional(),
-  type: z.enum(['longevity', 'parasite_cleanse']),
+  type: z.enum(['longevity', 'parasite_cleanse', 'therapeutic', 'ailments_based']),
   duration: z.number().min(1).max(365), // 1 day to 1 year
   intensity: z.enum(['gentle', 'moderate', 'intensive']),
   config: z.record(z.any()), // Protocol-specific configuration
@@ -441,3 +441,235 @@ export const assignProtocolSchema = z.object({
 
 export type CreateHealthProtocol = z.infer<typeof createHealthProtocolSchema>;
 export type AssignProtocol = z.infer<typeof assignProtocolSchema>;
+
+/**
+ * Protocol Templates Table
+ * 
+ * Stores reusable protocol templates for common health goals.
+ * Templates can be used as starting points for custom protocols.
+ */
+export const protocolTemplates = pgTable("protocol_templates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 50 }).notNull(), // 'weight_loss', 'muscle_gain', 'detox', 'energy', 'longevity', 'therapeutic'
+  templateType: varchar("template_type", { length: 50 }).notNull(), // 'longevity', 'parasite_cleanse', 'ailments_based', 'general'
+  defaultDuration: integer("default_duration").notNull(), // Duration in days
+  defaultIntensity: varchar("default_intensity", { length: 20 }).notNull(), // 'gentle', 'moderate', 'intensive'
+  baseConfig: jsonb("base_config").notNull(), // Base protocol configuration
+  targetAudience: jsonb("target_audience").$type<string[]>().default([]), // ['beginners', 'intermediate', 'advanced']
+  healthFocus: jsonb("health_focus").$type<string[]>().default([]), // Focus areas like 'cardiovascular', 'digestive', 'immune'
+  tags: jsonb("tags").$type<string[]>().default([]), // For categorization and search
+  isActive: boolean("is_active").default(true),
+  usageCount: integer("usage_count").default(0), // Track popularity
+  createdBy: uuid("created_by").references(() => users.id), // Admin or trainer who created template
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  categoryIdx: index("protocol_templates_category_idx").on(table.category),
+  templateTypeIdx: index("protocol_templates_type_idx").on(table.templateType),
+  activeIdx: index("protocol_templates_active_idx").on(table.isActive),
+}));
+
+/**
+ * Protocol Versions Table
+ * 
+ * Tracks version history of protocols for change management.
+ */
+export const protocolVersions = pgTable("protocol_versions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  protocolId: uuid("protocol_id")
+    .references(() => trainerHealthProtocols.id, { onDelete: "cascade" })
+    .notNull(),
+  versionNumber: varchar("version_number", { length: 20 }).notNull(), // e.g., "1.0", "1.1", "2.0"
+  versionName: varchar("version_name", { length: 255 }), // Optional human-readable name
+  changelog: text("changelog").notNull(), // Description of changes
+  config: jsonb("config").notNull(), // Full protocol configuration at this version
+  isActive: boolean("is_active").default(false), // Only one active version per protocol
+  createdBy: uuid("created_by")
+    .references(() => users.id)
+    .notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  protocolVersionIdx: index("protocol_versions_protocol_id_idx").on(table.protocolId),
+  activeVersionIdx: index("protocol_versions_active_idx").on(table.isActive, table.protocolId),
+}));
+
+/**
+ * Medical Safety Validations Table
+ * 
+ * Stores safety validation results for protocols against medications and conditions.
+ */
+export const medicalSafetyValidations = pgTable("medical_safety_validations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  protocolId: uuid("protocol_id")
+    .references(() => trainerHealthProtocols.id, { onDelete: "cascade" })
+    .notNull(),
+  customerId: uuid("customer_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  medications: jsonb("medications").$type<string[]>().default([]), // Current medications
+  healthConditions: jsonb("health_conditions").$type<string[]>().default([]), // Health conditions
+  allergies: jsonb("allergies").$type<string[]>().default([]), // Known allergies
+  safetyRating: varchar("safety_rating", { length: 20 }).notNull(), // 'safe', 'caution', 'warning', 'contraindicated'
+  interactions: jsonb("interactions").notNull(), // Detailed interaction analysis
+  recommendations: jsonb("recommendations").$type<string[]>().default([]), // Safety recommendations
+  validatedAt: timestamp("validated_at").defaultNow(),
+  validatedBy: varchar("validated_by", { length: 50 }).default("system"), // 'system' or 'healthcare_provider'
+  expiresAt: timestamp("expires_at"), // When validation expires (for medication changes)
+  isActive: boolean("is_active").default(true),
+}, (table) => ({
+  protocolCustomerIdx: index("safety_validations_protocol_customer_idx").on(table.protocolId, table.customerId),
+  safetyRatingIdx: index("safety_validations_rating_idx").on(table.safetyRating),
+  activeIdx: index("safety_validations_active_idx").on(table.isActive),
+}));
+
+/**
+ * Protocol Effectiveness Tracking Table
+ * 
+ * Tracks protocol effectiveness through client progress correlation.
+ */
+export const protocolEffectiveness = pgTable("protocol_effectiveness", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  protocolId: uuid("protocol_id")
+    .references(() => trainerHealthProtocols.id, { onDelete: "cascade" })
+    .notNull(),
+  assignmentId: uuid("assignment_id")
+    .references(() => protocolAssignments.id, { onDelete: "cascade" })
+    .notNull(),
+  customerId: uuid("customer_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  
+  // Baseline metrics (at protocol start)
+  baselineMetrics: jsonb("baseline_metrics").default({}), // Weight, measurements, energy levels, etc.
+  
+  // Progress tracking
+  weeklyProgress: jsonb("weekly_progress").$type<Array<{
+    week: number;
+    date: string;
+    metrics: any;
+    notes: string;
+    adherence: number; // 0-100%
+  }>>().default([]),
+  
+  // Final outcomes
+  finalMetrics: jsonb("final_metrics").default({}), // End-of-protocol measurements
+  overallEffectiveness: decimal("overall_effectiveness", { precision: 4, scale: 2 }), // 0-100%
+  clientSatisfaction: integer("client_satisfaction"), // 1-5 rating
+  wouldRecommend: boolean("would_recommend"),
+  
+  // Success indicators
+  goalsAchieved: integer("goals_achieved").default(0), // Number of goals achieved
+  totalGoals: integer("total_goals").default(0), // Total goals set
+  completionRate: decimal("completion_rate", { precision: 4, scale: 2 }), // 0-100%
+  
+  // Analysis
+  successFactors: jsonb("success_factors").$type<string[]>().default([]), // What contributed to success
+  challenges: jsonb("challenges").$type<string[]>().default([]), // What hindered progress
+  
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  isCompleted: boolean("is_completed").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  protocolIdx: index("protocol_effectiveness_protocol_idx").on(table.protocolId),
+  customerIdx: index("protocol_effectiveness_customer_idx").on(table.customerId),
+  assignmentIdx: index("protocol_effectiveness_assignment_idx").on(table.assignmentId),
+  completedIdx: index("protocol_effectiveness_completed_idx").on(table.isCompleted),
+}));
+
+/**
+ * Protocol Performance Analytics Table
+ * 
+ * Aggregate analytics for protocol performance optimization.
+ */
+export const protocolAnalytics = pgTable("protocol_analytics", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  protocolId: uuid("protocol_id")
+    .references(() => trainerHealthProtocols.id, { onDelete: "cascade" })
+    .notNull(),
+  
+  // Usage statistics
+  totalAssignments: integer("total_assignments").default(0),
+  activeAssignments: integer("active_assignments").default(0),
+  completedAssignments: integer("completed_assignments").default(0),
+  
+  // Effectiveness metrics
+  averageEffectiveness: decimal("average_effectiveness", { precision: 4, scale: 2 }),
+  averageSatisfaction: decimal("average_satisfaction", { precision: 3, scale: 2 }),
+  averageCompletionRate: decimal("average_completion_rate", { precision: 4, scale: 2 }),
+  recommendationRate: decimal("recommendation_rate", { precision: 4, scale: 2 }),
+  
+  // Demographics that work best
+  effectiveDemographics: jsonb("effective_demographics").default({}),
+  commonSuccessFactors: jsonb("common_success_factors").$type<string[]>().default([]),
+  commonChallenges: jsonb("common_challenges").$type<string[]>().default([]),
+  
+  // Optimization suggestions
+  optimizationSuggestions: jsonb("optimization_suggestions").$type<string[]>().default([]),
+  
+  lastCalculated: timestamp("last_calculated").defaultNow(),
+  dataPoints: integer("data_points").default(0), // Number of completed assignments used for analytics
+}, (table) => ({
+  protocolIdx: index("protocol_analytics_protocol_idx").on(table.protocolId),
+  lastCalculatedIdx: index("protocol_analytics_calculated_idx").on(table.lastCalculated),
+}));
+
+// Type exports for new tables
+export type InsertProtocolTemplate = typeof protocolTemplates.$inferInsert;
+export type ProtocolTemplate = typeof protocolTemplates.$inferSelect;
+
+export type InsertProtocolVersion = typeof protocolVersions.$inferInsert;
+export type ProtocolVersion = typeof protocolVersions.$inferSelect;
+
+export type InsertMedicalSafetyValidation = typeof medicalSafetyValidations.$inferInsert;
+export type MedicalSafetyValidation = typeof medicalSafetyValidations.$inferSelect;
+
+export type InsertProtocolEffectiveness = typeof protocolEffectiveness.$inferInsert;
+export type ProtocolEffectiveness = typeof protocolEffectiveness.$inferSelect;
+
+export type InsertProtocolAnalytics = typeof protocolAnalytics.$inferInsert;
+export type ProtocolAnalytics = typeof protocolAnalytics.$inferSelect;
+
+// Validation schemas for new features
+export const createProtocolTemplateSchema = z.object({
+  name: z.string().min(1).max(255),
+  description: z.string().optional(),
+  category: z.enum(['weight_loss', 'muscle_gain', 'detox', 'energy', 'longevity', 'therapeutic', 'general']),
+  templateType: z.enum(['longevity', 'parasite_cleanse', 'ailments_based', 'general']),
+  defaultDuration: z.number().min(1).max(365),
+  defaultIntensity: z.enum(['gentle', 'moderate', 'intensive']),
+  baseConfig: z.record(z.any()),
+  targetAudience: z.array(z.string()).optional(),
+  healthFocus: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+export const medicalSafetyValidationSchema = z.object({
+  protocolId: z.string().uuid(),
+  medications: z.array(z.string()).optional(),
+  healthConditions: z.array(z.string()).optional(),
+  allergies: z.array(z.string()).optional(),
+});
+
+export const protocolEffectivenessUpdateSchema = z.object({
+  assignmentId: z.string().uuid(),
+  weeklyProgress: z.object({
+    week: z.number(),
+    date: z.string(),
+    metrics: z.record(z.any()),
+    notes: z.string().optional(),
+    adherence: z.number().min(0).max(100),
+  }).optional(),
+  finalMetrics: z.record(z.any()).optional(),
+  clientSatisfaction: z.number().min(1).max(5).optional(),
+  wouldRecommend: z.boolean().optional(),
+  goalsAchieved: z.number().optional(),
+  totalGoals: z.number().optional(),
+});
+
+export type CreateProtocolTemplate = z.infer<typeof createProtocolTemplateSchema>;
+export type MedicalSafetyValidationRequest = z.infer<typeof medicalSafetyValidationSchema>;
+export type ProtocolEffectivenessUpdate = z.infer<typeof protocolEffectivenessUpdateSchema>;

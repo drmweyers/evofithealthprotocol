@@ -29,7 +29,7 @@ passwordRouter.post('/forgot', async (req: Request, res: Response) => {
     res.json({ message: 'If a user with that email exists, a password reset link has been sent.' });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ message: fromZodError(error).toString() });
+      return res.status(400).json({ message: fromZodError(error as any).toString() });
     }
     console.error('Forgot password error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -57,7 +57,7 @@ passwordRouter.post('/reset', async (req: Request, res: Response) => {
     res.json({ message: 'Password has been reset successfully.' });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ message: fromZodError(error).toString() });
+      return res.status(400).json({ message: fromZodError(error as any).toString() });
     }
     console.error('Reset password error:', error);
     res.status(500).json({ message: 'Internal server error' });

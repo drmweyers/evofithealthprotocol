@@ -24,6 +24,8 @@ import customerRouter from "./routes/customerRoutes";
 import profileRouter from "./routes/profileRoutes";
 import progressRouter from "./routes/progressRoutes";
 import pdfRouter from "./routes/pdf";
+import specializedRouter from "./routes/specializedRoutes";
+import protocolTemplateRoutes from "./routes/protocolTemplateRoutes";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -44,6 +46,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/profile', profileRouter);
   app.use('/api/progress', progressRouter);
   app.use('/api/pdf', pdfRouter);
+  app.use('/api/specialized', specializedRouter);
+  app.use('/api/protocol-templates', protocolTemplateRoutes);
 
   /**
    * Public Health Info Routes

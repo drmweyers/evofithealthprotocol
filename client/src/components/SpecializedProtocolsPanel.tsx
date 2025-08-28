@@ -62,6 +62,20 @@ import type {
 
 import { getAilmentNutritionalFocus } from '../data/clientAilments';
 
+// Local interfaces for better type safety
+interface ProtocolActivity {
+  time: string;
+  purpose: string;
+  activity: string;
+  details: string;
+}
+
+interface DailySchedule {
+  day: number;
+  wakeUpTime: string;
+  schedule: ProtocolActivity[];
+}
+
 interface SpecializedProtocolsPanelProps {
   onConfigChange: (config: SpecializedProtocolConfig) => void;
   initialConfig?: Partial<SpecializedProtocolConfig>;
@@ -1023,7 +1037,7 @@ const SpecializedProtocolsPanel: React.FC<SpecializedProtocolsPanelProps> = ({
                                         Day {day.day} - Wake up: {day.wakeUpTime}
                                       </h5>
                                       <div className="space-y-3">
-                                        {day.schedule?.slice(0, 4).map((activity, actIndex) => (
+                                        {day.schedule?.slice(0, 4).map((activity: ProtocolActivity, actIndex: number) => (
                                           <div key={actIndex} className="bg-gray-50 p-3 rounded">
                                             <div className="flex justify-between items-start mb-1">
                                               <span className="font-medium text-purple-700">{activity.time}</span>

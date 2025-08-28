@@ -120,7 +120,7 @@ authRouter.post('/register', authRateLimit, async (req: Request, res: Response) 
     if (error instanceof z.ZodError) {
       return res.status(400).json({ 
         status: 'error',
-        message: fromZodError(error).toString(),
+        message: fromZodError(error as any).toString(),
         code: 'VALIDATION_ERROR'
       });
     }
@@ -219,7 +219,7 @@ authRouter.post('/login', authRateLimit, async (req: Request, res: Response) => 
     if (error instanceof z.ZodError) {
       return res.status(400).json({ 
         status: 'error',
-        message: fromZodError(error).toString(),
+        message: fromZodError(error as any).toString(),
         code: 'VALIDATION_ERROR'
       });
     }
@@ -464,7 +464,7 @@ authRouter.put('/profile', requireAuth, async (req: AuthRequest, res: Response) 
     if (error instanceof z.ZodError) {
       return res.status(400).json({ 
         status: 'error',
-        message: fromZodError(error).toString(),
+        message: fromZodError(error as any).toString(),
         code: 'VALIDATION_ERROR'
       });
     }

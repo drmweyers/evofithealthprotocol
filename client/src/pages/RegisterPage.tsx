@@ -12,7 +12,21 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { useToast } from '../hooks/use-toast';
 import { Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import styles from '../styles/icons.module.css';
+import { 
+  Activity, 
+  Shield, 
+  Users, 
+  Heart, 
+  Eye, 
+  EyeOff, 
+  Mail, 
+  Lock, 
+  User, 
+  Dumbbell,
+  CheckCircle,
+  XCircle,
+  Check
+} from 'lucide-react';
 
 const registerSchema = z.object({
   email: z.string().email({ message: 'Invalid email address' }),
@@ -37,6 +51,20 @@ interface InvitationData {
   expiresAt: string;
 }
 
+// Password strength checker
+const checkPasswordStrength = (password: string) => {
+  const checks = {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /[0-9]/.test(password),
+    special: /[^A-Za-z0-9]/.test(password),
+  };
+  
+  const score = Object.values(checks).filter(Boolean).length;
+  return { checks, score };
+};
+
 const RegisterPage = () => {
   const { register } = useAuth();
   const { toast } = useToast();
@@ -44,6 +72,9 @@ const RegisterPage = () => {
   const [invitationData, setInvitationData] = useState<InvitationData | null>(null);
   const [invitationToken, setInvitationToken] = useState<string | null>(null);
   const [isVerifyingInvitation, setIsVerifyingInvitation] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -101,6 +132,7 @@ const RegisterPage = () => {
   };
 
   const onSubmit = async (values: RegisterFormData) => {
+    setIsLoading(true);
     try {
       if (invitationToken) {
         // Register via invitation
@@ -175,139 +207,195 @@ const RegisterPage = () => {
         description: errorMessage,
         variant: 'destructive',
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  const currentPassword = form.watch('password') || '';
+  const passwordStrength = checkPasswordStrength(currentPassword);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/5 flex items-center justify-center p-3 sm:p-4 lg:p-6">
-      <div className="w-full max-w-4xl grid lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 items-center">
-        {/* Left side - Welcome content */}
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-blue-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-start">
+        {/* Left side - Brand and Features */}
         <motion.div 
-          initial={{ opacity: 0, x: -20 }}
+          initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          className="hidden lg:flex flex-col space-y-4 p-4 sm:p-6"
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="hidden lg:flex flex-col space-y-8 p-8 sticky top-8"
         >
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary">
-            Welcome to EvoFitMeals
-          </h1>
-          <p className="text-base sm:text-lg text-muted-foreground">
-            Join our community of health enthusiasts and fitness professionals.
-          </p>
-          
-          <div className="space-y-4 sm:space-y-6 mt-6 sm:mt-8">
-            <div className="flex items-start space-x-3">
-              <div className={styles.iconContainer}>
-                <i className={`fas fa-utensils ${styles.iconPrimary}`}></i>
+          {/* Brand Header */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-3 bg-gradient-to-br from-emerald-500 to-blue-600 rounded-2xl shadow-lg">
+                <Activity className="h-8 w-8 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-sm sm:text-base">Personalized Meal Plans</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Get customized meal plans tailored to your goals
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-start space-x-3">
-              <div className={styles.iconContainer}>
-                <i className={`fas fa-dumbbell ${styles.iconPrimary}`}></i>
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm sm:text-base">Expert Guidance</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Connect with professional trainers and nutritionists
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-start space-x-3">
-              <div className={styles.iconContainer}>
-                <i className={`fas fa-chart-line ${styles.iconPrimary}`}></i>
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm sm:text-base">Track Your Progress</h3>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Monitor your fitness journey with detailed analytics
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
+                  EvoFit Health Protocol
+                </h1>
+                <p className="text-gray-600 text-lg">
+                  Join the Future of Health Management
                 </p>
               </div>
             </div>
           </div>
+
+          {/* Feature Benefits */}
+          <div className="space-y-6">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="flex items-start space-x-4"
+            >
+              <div className="p-3 bg-emerald-100 rounded-xl">
+                <Shield className="h-6 w-6 text-emerald-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 text-lg">Secure & Professional</h3>
+                <p className="text-gray-600">
+                  HIPAA-compliant health data management with enterprise-grade security
+                </p>
+              </div>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="flex items-start space-x-4"
+            >
+              <div className="p-3 bg-blue-100 rounded-xl">
+                <Heart className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 text-lg">Personalized Health Plans</h3>
+                <p className="text-gray-600">
+                  AI-powered health protocols tailored to your unique wellness journey
+                </p>
+              </div>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+              className="flex items-start space-x-4"
+            >
+              <div className="p-3 bg-purple-100 rounded-xl">
+                <Users className="h-6 w-6 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 text-lg">Expert Network</h3>
+                <p className="text-gray-600">
+                  Connect with certified trainers and health professionals worldwide
+                </p>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Trust Indicators */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.8 }}
+            className="mt-8 p-6 bg-gradient-to-br from-emerald-50 to-blue-50 rounded-2xl border border-emerald-100"
+          >
+            <div className="flex items-center space-x-3 mb-4">
+              <CheckCircle className="h-5 w-5 text-emerald-600" />
+              <span className="text-sm font-semibold text-gray-700">Trusted by 10,000+ Users</span>
+            </div>
+            <div className="flex items-center space-x-3">
+              <CheckCircle className="h-5 w-5 text-emerald-600" />
+              <span className="text-sm font-semibold text-gray-700">HIPAA Compliant & ISO 27001 Certified</span>
+            </div>
+          </motion.div>
         </motion.div>
 
-        {/* Right side - Registration form */}
+        {/* Right side - Registration Form */}
         <motion.div
-          initial={{ opacity: 0, x: 20 }}
+          initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full"
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="w-full max-w-md mx-auto"
         >
-          {/* Mobile header - only shown on small screens */}
-          <div className="lg:hidden text-center mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-primary mb-2">
-              EvoFitMeals
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Join our fitness community
-            </p>
+          {/* Mobile Header */}
+          <div className="lg:hidden text-center mb-8">
+            <div className="flex items-center justify-center space-x-3 mb-4">
+              <div className="p-2 bg-gradient-to-br from-emerald-500 to-blue-600 rounded-xl">
+                <Activity className="h-6 w-6 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
+                EvoFit Health Protocol
+              </h1>
+            </div>
+            <p className="text-gray-600">Join the Future of Health Management</p>
           </div>
 
-          <Card className="border-none shadow-lg bg-white/80 backdrop-blur-sm">
-            <CardHeader className="space-y-1 pb-4 sm:pb-6 px-4 sm:px-6">
-              <CardTitle className="text-xl sm:text-2xl text-center lg:text-left">
-                Create Account
+          <Card className="border-0 shadow-2xl bg-white/80 backdrop-blur-xl">
+            <CardHeader className="space-y-1 pb-6 text-center">
+              <CardTitle className="text-2xl font-bold text-gray-900">
+                Create Your Account
               </CardTitle>
-              <CardDescription className="text-sm sm:text-base text-center lg:text-left">
-                Start your fitness journey today
+              <CardDescription className="text-gray-600">
+                Start your personalized health journey today
               </CardDescription>
             </CardHeader>
             
-            <CardContent className="px-4 sm:px-6">
+            <CardContent className="space-y-6">
               {/* Invitation Info */}
               {invitationData && (
-                <Alert className="mb-6 border-green-200 bg-green-50">
-                  <i className="fas fa-envelope text-green-600"></i>
-                  <AlertDescription className="text-green-800">
-                    <strong>Trainer Invitation</strong><br />
-                    You've been invited by <strong>{invitationData.trainerEmail}</strong> to join EvoFitMeals.
-                    Complete your registration below to get started.
-                  </AlertDescription>
-                </Alert>
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-6"
+                >
+                  <Alert className="border-emerald-200 bg-emerald-50">
+                    <Mail className="h-4 w-4 text-emerald-600" />
+                    <AlertDescription className="text-emerald-800">
+                      <strong>Trainer Invitation</strong><br />
+                      You've been invited by <strong>{invitationData.trainerEmail}</strong> to join EvoFit Health Protocol.
+                    </AlertDescription>
+                  </Alert>
+                </motion.div>
               )}
 
               {/* Loading State for Invitation Verification */}
               {isVerifyingInvitation && (
-                <Alert className="mb-6">
-                  <i className="fas fa-spinner fa-spin text-blue-600"></i>
-                  <AlertDescription>
+                <Alert className="mb-6 border-blue-200 bg-blue-50">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <AlertDescription className="text-blue-800">
                     Verifying invitation...
                   </AlertDescription>
                 </Alert>
               )}
 
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <FormField
                     control={form.control}
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm sm:text-base font-medium">
+                        <FormLabel className="text-sm font-semibold text-gray-700">
                           Email Address
                         </FormLabel>
                         <FormControl>
                           <div className="relative">
                             <Input 
-                              placeholder="your@email.com" 
+                              placeholder="your.email@domain.com" 
                               type="email"
                               autoComplete="email"
                               disabled={!!invitationData}
                               {...field} 
-                              className="h-11 sm:h-12 pl-10 pr-4 text-sm sm:text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg disabled:bg-gray-50 disabled:text-gray-500"
+                              className="h-12 pl-12 pr-4 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-0 text-gray-900 placeholder-gray-400 transition-all duration-200 disabled:bg-gray-50 disabled:text-gray-500"
                             />
-                            <i className={`fas fa-envelope absolute left-3 top-1/2 -translate-y-1/2 ${styles.iconMuted} text-sm`}></i>
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                           </div>
                         </FormControl>
-                        <FormMessage className="text-xs sm:text-sm" />
+                        <FormMessage className="text-sm text-red-500" />
                       </FormItem>
                     )}
                   />
@@ -317,32 +405,92 @@ const RegisterPage = () => {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm sm:text-base font-medium">
+                        <FormLabel className="text-sm font-semibold text-gray-700">
                           Password
                         </FormLabel>
                         <FormControl>
                           <div className="relative">
                             <Input 
-                              type="password" 
+                              type={showPassword ? "text" : "password"} 
                               autoComplete="new-password"
-                              placeholder="Strong password required"
+                              placeholder="Create a strong password"
                               {...field} 
-                              className="h-11 sm:h-12 pl-10 pr-4 text-sm sm:text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg"
+                              className="h-12 pl-12 pr-12 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-0 text-gray-900 placeholder-gray-400 transition-all duration-200"
                             />
-                            <i className={`fas fa-lock absolute left-3 top-1/2 -translate-y-1/2 ${styles.iconMuted} text-sm`}></i>
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-12 px-3 hover:bg-transparent"
+                              onClick={() => setShowPassword(!showPassword)}
+                            >
+                              {showPassword ? (
+                                <EyeOff className="h-5 w-5 text-gray-400" />
+                              ) : (
+                                <Eye className="h-5 w-5 text-gray-400" />
+                              )}
+                            </Button>
                           </div>
                         </FormControl>
-                        <div className="text-xs text-gray-600 mt-1 space-y-1">
-                          <p>Password must contain:</p>
-                          <ul className="list-disc list-inside space-y-0.5 ml-2">
-                            <li>At least 8 characters</li>
-                            <li>One uppercase letter</li>
-                            <li>One lowercase letter</li>
-                            <li>One number</li>
-                            <li>One special character (!@#$%^&*)</li>
-                          </ul>
-                        </div>
-                        <FormMessage className="text-xs sm:text-sm" />
+                        
+                        {/* Password Strength Indicator */}
+                        {currentPassword && (
+                          <motion.div 
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            className="mt-3 p-3 bg-gray-50 rounded-lg space-y-2"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium text-gray-600">Password Strength:</span>
+                              <span className={`text-xs font-semibold ${
+                                passwordStrength.score >= 4 ? 'text-emerald-600' : 
+                                passwordStrength.score >= 3 ? 'text-yellow-600' : 'text-red-600'
+                              }`}>
+                                {passwordStrength.score >= 4 ? 'Strong' : 
+                                 passwordStrength.score >= 3 ? 'Good' : 'Weak'}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-5 gap-1">
+                              {[...Array(5)].map((_, i) => (
+                                <div 
+                                  key={i}
+                                  className={`h-2 rounded-full ${
+                                    i < passwordStrength.score 
+                                      ? passwordStrength.score >= 4 ? 'bg-emerald-500' :
+                                        passwordStrength.score >= 3 ? 'bg-yellow-500' : 'bg-red-500'
+                                      : 'bg-gray-200'
+                                  }`} 
+                                />
+                              ))}
+                            </div>
+                            <div className="space-y-1">
+                              {Object.entries({
+                                length: 'At least 8 characters',
+                                uppercase: 'One uppercase letter',
+                                lowercase: 'One lowercase letter', 
+                                number: 'One number',
+                                special: 'One special character'
+                              }).map(([key, label]) => (
+                                <div key={key} className="flex items-center space-x-2">
+                                  {passwordStrength.checks[key as keyof typeof passwordStrength.checks] ? (
+                                    <CheckCircle className="h-3 w-3 text-emerald-500" />
+                                  ) : (
+                                    <XCircle className="h-3 w-3 text-gray-300" />
+                                  )}
+                                  <span className={`text-xs ${
+                                    passwordStrength.checks[key as keyof typeof passwordStrength.checks] 
+                                      ? 'text-emerald-600' : 'text-gray-500'
+                                  }`}>
+                                    {label}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                        
+                        <FormMessage className="text-sm text-red-500" />
                       </FormItem>
                     )}
                   />
@@ -352,22 +500,35 @@ const RegisterPage = () => {
                     name="confirmPassword"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm sm:text-base font-medium">
+                        <FormLabel className="text-sm font-semibold text-gray-700">
                           Confirm Password
                         </FormLabel>
                         <FormControl>
                           <div className="relative">
                             <Input 
-                              type="password" 
+                              type={showConfirmPassword ? "text" : "password"} 
                               autoComplete="new-password"
-                              placeholder="Re-enter your password"
+                              placeholder="Confirm your password"
                               {...field} 
-                              className="h-11 sm:h-12 pl-10 pr-4 text-sm sm:text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg"
+                              className="h-12 pl-12 pr-12 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-0 text-gray-900 placeholder-gray-400 transition-all duration-200"
                             />
-                            <i className={`fas fa-shield-alt absolute left-3 top-1/2 -translate-y-1/2 ${styles.iconMuted} text-sm`}></i>
+                            <Shield className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-12 px-3 hover:bg-transparent"
+                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            >
+                              {showConfirmPassword ? (
+                                <EyeOff className="h-5 w-5 text-gray-400" />
+                              ) : (
+                                <Eye className="h-5 w-5 text-gray-400" />
+                              )}
+                            </Button>
                           </div>
                         </FormControl>
-                        <FormMessage className="text-xs sm:text-sm" />
+                        <FormMessage className="text-sm text-red-500" />
                       </FormItem>
                     )}
                   />
@@ -377,7 +538,7 @@ const RegisterPage = () => {
                     name="role"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm sm:text-base font-medium">
+                        <FormLabel className="text-sm font-semibold text-gray-700">
                           Account Type
                         </FormLabel>
                         <FormControl>
@@ -386,69 +547,91 @@ const RegisterPage = () => {
                             defaultValue={field.value}
                             disabled={!!invitationData}
                           >
-                            <SelectTrigger className="h-11 sm:h-12 pl-10 pr-4 text-sm sm:text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg relative disabled:bg-gray-50 disabled:text-gray-500">
-                              <i className={`fas fa-user absolute left-3 top-1/2 -translate-y-1/2 ${styles.iconMuted} text-sm`}></i>
-                              <SelectValue placeholder="Select your account type" />
+                            <SelectTrigger className="h-12 pl-12 pr-4 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:ring-0 text-gray-900 transition-all duration-200 disabled:bg-gray-50 disabled:text-gray-500 relative">
+                              <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+                              <SelectValue placeholder="Choose your account type" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="customer">
-                                <div className="flex items-center space-x-2">
-                                  <i className={`fas fa-user ${styles.icon} text-sm`}></i>
-                                  <span>Customer - Looking for meal plans</span>
+                                <div className="flex items-center space-x-3">
+                                  <Heart className="h-4 w-4 text-blue-600" />
+                                  <div>
+                                    <div className="font-medium">Customer</div>
+                                    <div className="text-xs text-gray-500">Looking for health protocols</div>
+                                  </div>
                                 </div>
                               </SelectItem>
                               {!invitationData && (
                                 <SelectItem value="trainer">
-                                  <div className="flex items-center space-x-2">
-                                    <i className={`fas fa-dumbbell ${styles.icon} text-sm`}></i>
-                                    <span>Trainer - Creating meal plans</span>
+                                  <div className="flex items-center space-x-3">
+                                    <Dumbbell className="h-4 w-4 text-emerald-600" />
+                                    <div>
+                                      <div className="font-medium">Trainer</div>
+                                      <div className="text-xs text-gray-500">Creating health protocols</div>
+                                    </div>
                                   </div>
                                 </SelectItem>
                               )}
                             </SelectContent>
                           </Select>
                         </FormControl>
-                        <FormMessage className="text-xs sm:text-sm" />
+                        <FormMessage className="text-sm text-red-500" />
                       </FormItem>
                     )}
                   />
                   
                   <Button 
                     type="submit" 
-                    className="w-full h-11 sm:h-12 text-sm sm:text-base font-medium bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 rounded-lg transition-all duration-200 mt-6"
-                    disabled={form.formState.isSubmitting}
+                    className="w-full h-12 bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isLoading}
                   >
-                    {form.formState.isSubmitting ? (
+                    {isLoading ? (
                       <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
                         Creating Account...
                       </div>
                     ) : (
-                      <>
-                        <i className="fas fa-user-plus mr-2 text-sm"></i>
+                      <div className="flex items-center justify-center">
+                        <User className="h-5 w-5 mr-2" />
                         Create Account
-                      </>
+                      </div>
                     )}
                   </Button>
                 </form>
               </Form>
 
-            </CardContent>
-            
-            <CardFooter className="flex flex-col items-center space-y-3 px-4 sm:px-6 pt-4 sm:pt-6 pb-6 sm:pb-8">
-              <div className="text-center">
-                <p className="text-xs sm:text-sm text-gray-600">
+              <div className="text-center pt-4">
+                <p className="text-sm text-gray-600">
                   Already have an account?{' '}
                   <Link 
                     href="/login" 
-                    className="font-medium text-primary hover:text-primary/80 transition-colors"
+                    className="font-semibold text-emerald-600 hover:text-emerald-500 transition-colors"
                   >
                     Sign in here
                   </Link>
                 </p>
               </div>
-            </CardFooter>
+            </CardContent>
           </Card>
+
+          {/* Legal Footer */}
+          <motion.footer 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+            className="mt-8 text-center"
+          >
+            <p className="text-xs text-gray-500">
+              By creating an account, you agree to our{' '}
+              <a href="/terms" className="text-gray-700 hover:text-gray-900 transition-colors underline">
+                Terms of Service
+              </a>
+              {' '}and{' '}
+              <a href="/privacy" className="text-gray-700 hover:text-gray-900 transition-colors underline">
+                Privacy Policy
+              </a>
+            </p>
+          </motion.footer>
         </motion.div>
       </div>
     </div>

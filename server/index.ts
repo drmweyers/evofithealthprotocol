@@ -1,30 +1,35 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import ViteExpress from 'vite-express';
+import path from 'path';
 import { 
   securityHeaders, 
   generalRateLimit, 
   sanitizeInput, 
   detectSuspiciousActivity 
-} from './middleware/security.js';
+} from './middleware/security';
 
 // Import routes
-import authRoutes from './authRoutes.js';
-import trainerRoutes from './routes/trainerRoutes.js';
-import pdfRoutes from './routes/pdf.js';
-import adminRoutes from './routes/adminRoutes.js';
+import authRoutes from './authRoutes';
+import trainerRoutes from './routes/trainerRoutes';
+import pdfRoutes from './routes/pdf';
+import adminRoutes from './routes/adminRoutes';
+import healthRoutes from './routes/healthRoutes';
+import customerRoutes from './routes/customerRoutes';
+import profileRoutes from './routes/profileRoutes';
+import progressRoutes from './routes/progressRoutes';
+import passwordRoutes from './passwordRoutes';
+import invitationRoutes from './invitationRoutes';
+import specializedRoutes from './routes/specializedRoutes';
+import protocolRoutes from './routes/protocolRoutes';
 
 // Load environment variables
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Using import.meta.dirname for ES modules in Node.js 20+
 
 const app = express();
-const PORT = parseInt(process.env.PORT || '3500', 10);
+const PORT = parseInt(process.env.PORT || '3501', 10);
 
 // Security middleware - MUST be first
 app.use(securityHeaders);
@@ -43,36 +48,44 @@ app.use(cors({
 
 // Body parsing middleware with security limits
 app.use(express.json({ 
-  limit: '500kb',
-  verify: (req, res, buf) => {
-    // Additional security check for JSON parsing
-    try {
-      JSON.parse(buf.toString());
-    } catch (e) {
-      throw new Error('Invalid JSON format');
-    }
-  }
+  limit: '500kb'
 }));
 app.use(express.urlencoded({ extended: true, limit: '500kb' }));
+
+// For now, cookies will be handled manually in auth routes
+// TODO: Add cookie-parser after Docker rebuild
 
 // Input sanitization - MUST be after body parsing
 app.use(sanitizeInput);
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
-    service: 'Health Protocol Management System',
-    version: '1.0.0',
-    timestamp: new Date().toISOString()
-  });
+// Debug: Log all incoming requests
+app.use((req, res, next) => {
+  console.log(`📝 ${req.method} ${req.path} - Headers: ${JSON.stringify(req.headers)}`);
+  next();
 });
 
-// API Routes
+// Health check routes - must be BEFORE ViteExpress middleware
+app.use('/', healthRoutes);
+
+console.log('✅ Health routes registered');
+
+// API Routes - MUST be defined BEFORE ViteExpress middleware
 app.use('/api/auth', authRoutes);
-app.use('/api/trainer', trainerRoutes);
-app.use('/api/pdf', pdfRoutes);
+console.log('✅ Auth routes registered');
+
+app.use('/api/password', passwordRoutes);
+app.use('/api/invitations', invitationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/trainer', trainerRoutes);
+app.use('/api/customer', customerRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/progress', progressRoutes);
+app.use('/api/pdf', pdfRoutes);
+app.use('/api/specialized', specializedRoutes);
+app.use('/api/protocols', protocolRoutes);
+
+console.log('✅ All API routes registered');
+console.log('✅ Protocol optimization routes registered');
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -88,16 +101,43 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-// Start server
+// Serve static files in production
 if (process.env.NODE_ENV === 'production') {
+  // Serve static files from client build directory
+  const clientBuildPath = path.join(process.cwd(), 'client', 'dist-evofithealthprotocol');
+  app.use(express.static(clientBuildPath));
+  
+  // Handle client-side routing - send index.html for non-API routes
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+      return next(); // Let API routes handle this
+    }
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
+
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Health Protocol Server running on port ${PORT}`);
+    console.log(`🚀 Health Protocol Production Server running on port ${PORT}`);
     console.log(`📋 Environment: ${process.env.NODE_ENV}`);
   });
 } else {
-  ViteExpress.listen(app, PORT, () => {
-    console.log(`🚀 Health Protocol Development Server running on http://localhost:${PORT}`);
-    console.log(`📋 Environment: ${process.env.NODE_ENV}`);
-    console.log(`🔧 Vite HMR enabled`);
+  // Development mode - import Vite integration for STORY-007 testing
+  import('./vite.js').then(({ setupVite }) => {
+    const server = app.listen(PORT, () => {
+      console.log(`🚀 Health Protocol Server with Frontend running on http://localhost:${PORT}`);
+      console.log(`📋 Environment: ${process.env.NODE_ENV}`);
+      console.log(`🔧 Development mode with Vite integration for testing`);
+      console.log(`✅ API routes and frontend serving enabled`);
+    });
+    
+    setupVite(app, server).catch(console.error);
+  }).catch(() => {
+    // Fallback to API-only mode if Vite integration fails
+    app.listen(PORT, () => {
+      console.log(`🚀 Health Protocol API Server running on http://localhost:${PORT} (Fallback)`);
+      console.log(`📋 Environment: ${process.env.NODE_ENV}`);
+      console.log(`🔧 Pure API mode - no frontend serving`);
+      console.log(`💬 Frontend should run separately on Vite dev server`);
+      console.log(`✅ API routes are working correctly`);
+    });
   });
 }

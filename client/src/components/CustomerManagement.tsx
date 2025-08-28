@@ -21,7 +21,7 @@ import {
   Plus, 
   Calendar, 
   Target, 
-  ChefHat, 
+  Zap, 
   Search,
   MoreVertical,
   Trash2,
@@ -30,7 +30,6 @@ import {
   Clock,
   Download
 } from 'lucide-react';
-// MealPlan type removed - using local interfaces instead
 
 interface Customer {
   id: string;
@@ -38,148 +37,143 @@ interface Customer {
   firstAssignedAt: string;
 }
 
-interface CustomerMealPlan {
+interface HealthProtocolAssignment {
   id: string;
   customerId: string;
   trainerId: string;
-  mealPlanData: MealPlan;
+  protocolData: any;
   assignedAt: string;
+  status: string;
 }
 
-interface MealPlanAssignmentDialogProps {
+interface ProtocolAssignmentDialogProps {
   customerId: string;
   customerEmail: string;
   onSuccess: () => void;
 }
 
-function MealPlanAssignmentDialog({ customerId, customerEmail, onSuccess }: MealPlanAssignmentDialogProps) {
+function ProtocolAssignmentDialog({ customerId, customerEmail, onSuccess }: ProtocolAssignmentDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedMealPlan, setSelectedMealPlan] = useState<MealPlan | null>(null);
+  const [selectedProtocol, setSelectedProtocol] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Get available generated meal plans (this would typically come from a meal plan library or recent generations)
-  const { data: availableMealPlans } = useQuery<MealPlan[]>({
-    queryKey: ['availableMealPlans'],
+  // Get available health protocols
+  const { data: availableProtocols } = useQuery<any[]>({
+    queryKey: ['availableProtocols'],
     queryFn: async () => {
-      // For now, return an empty array - in a real app, this would fetch generated meal plans
-      // that haven't been assigned yet or are available for assignment
-      return [];
+      const res = await apiRequest('GET', '/api/trainer/protocols');
+      return res.json();
     },
     enabled: isOpen
   });
 
-  const assignMealPlanMutation = useMutation({
-    mutationFn: async (mealPlanData: MealPlan) => {
-      const res = await apiRequest('POST', `/api/trainer/customers/${customerId}/meal-plans`, {
-        mealPlanData
+  const assignProtocolMutation = useMutation({
+    mutationFn: async (protocolData: any) => {
+      const res = await apiRequest('POST', `/api/trainer/customers/${customerId}/protocols`, {
+        protocolData
       });
       return res.json();
     },
     onSuccess: () => {
       toast({
-        title: "Meal Plan Assigned",
-        description: `Successfully assigned meal plan to ${customerEmail}`,
+        title: "Protocol Assigned",
+        description: `Successfully assigned health protocol to ${customerEmail}`,
       });
       setIsOpen(false);
-      setSelectedMealPlan(null);
+      setSelectedProtocol(null);
       queryClient.invalidateQueries({ queryKey: ['trainerCustomers'] });
-      queryClient.invalidateQueries({ queryKey: ['customerMealPlans', customerId] });
+      queryClient.invalidateQueries({ queryKey: ['customerProtocols', customerId] });
       onSuccess();
     },
     onError: (error: any) => {
       toast({
         title: "Assignment Failed",
-        description: error.message || "Failed to assign meal plan",
+        description: error.message || "Failed to assign health protocol",
         variant: "destructive",
       });
     }
   });
 
   const handleAssign = () => {
-    if (!selectedMealPlan) {
+    if (!selectedProtocol) {
       toast({
-        title: "No Meal Plan Selected",
-        description: "Please select a meal plan to assign",
+        title: "No Protocol Selected",
+        description: "Please select a health protocol to assign",
         variant: "destructive",
       });
       return;
     }
-    assignMealPlanMutation.mutate(selectedMealPlan);
+    assignProtocolMutation.mutate(selectedProtocol);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="bg-green-600 hover:bg-green-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Assign Plan
+        <Button variant="outline" size="sm">
+          <Zap className="h-4 w-4 mr-2" />
+          Assign Protocol
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <ChefHat className="h-5 w-5" />
-            <span>Assign Meal Plan to {customerEmail}</span>
-          </DialogTitle>
+          <DialogTitle>Assign Health Protocol</DialogTitle>
         </DialogHeader>
-        
         <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center space-x-2 text-blue-800">
-              <Target className="h-5 w-5" />
-              <span className="font-medium">Quick Meal Plan Assignment</span>
-            </div>
-            <p className="text-sm text-blue-700 mt-2">
-              To assign a meal plan, first generate one using the "Meal Plan Generator" tab, 
-              then return here to assign it to this customer.
-            </p>
+          <div>
+            <Label>Customer</Label>
+            <p className="text-sm text-muted-foreground">{customerEmail}</p>
           </div>
-
-          {availableMealPlans && availableMealPlans.length > 0 ? (
-            <div className="space-y-3">
-              <Label>Select a meal plan to assign:</Label>
-              <div className="grid gap-3 max-h-60 overflow-y-auto">
-                {availableMealPlans.map((plan) => (
-                  <Card 
-                    key={plan.id} 
-                    className={`cursor-pointer transition-colors ${
-                      selectedMealPlan?.id === plan.id ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'
+          
+          <div className="space-y-3">
+            <Label>Available Health Protocols</Label>
+            {availableProtocols && availableProtocols.length > 0 ? (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {availableProtocols.map((protocol) => (
+                  <div
+                    key={protocol.id}
+                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                      selectedProtocol?.id === protocol.id 
+                        ? 'border-primary bg-primary/10' 
+                        : 'hover:bg-muted'
                     }`}
-                    onClick={() => setSelectedMealPlan(plan)}
+                    onClick={() => setSelectedProtocol(protocol)}
                   >
-                    <CardContent className="p-3">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="font-medium">{plan.planName}</h4>
-                          <p className="text-sm text-gray-600">
-                            {plan.fitnessGoal} • {plan.days} days • {plan.dailyCalorieTarget} cal/day
-                          </p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{protocol.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {protocol.description}
+                        </p>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <Badge variant="secondary">{protocol.type}</Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {protocol.duration} days
+                          </span>
                         </div>
-                        <Badge variant="outline">{plan.meals.length} meals</Badge>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 ))}
               </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              <ChefHat className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-              <p>No meal plans available for assignment.</p>
-              <p className="text-sm">Generate a meal plan first using the Meal Plan Generator.</p>
-            </div>
-          )}
+            ) : (
+              <div className="text-center py-8">
+                <Zap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No health protocols available</p>
+                <p className="text-sm text-muted-foreground">Create some protocols first</p>
+              </div>
+            )}
+          </div>
 
-          <div className="flex justify-end space-x-3 pt-4 border-t">
+          <div className="flex justify-end space-x-2 pt-4">
             <Button variant="outline" onClick={() => setIsOpen(false)}>
               Cancel
             </Button>
             <Button 
               onClick={handleAssign}
-              disabled={!selectedMealPlan || assignMealPlanMutation.isPending}
+              disabled={!selectedProtocol || assignProtocolMutation.isPending}
             >
-              {assignMealPlanMutation.isPending ? 'Assigning...' : 'Assign Meal Plan'}
+              {assignProtocolMutation.isPending ? 'Assigning...' : 'Assign Protocol'}
             </Button>
           </div>
         </div>
@@ -188,126 +182,14 @@ function MealPlanAssignmentDialog({ customerId, customerEmail, onSuccess }: Meal
   );
 }
 
-function CustomerMealPlans({ customerId, customerEmail }: { customerId: string; customerEmail: string }) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const { data: mealPlansData, isLoading } = useQuery<{ mealPlans: CustomerMealPlan[]; total: number }>({
-    queryKey: ['customerMealPlans', customerId],
-    queryFn: async () => {
-      const res = await apiRequest('GET', `/api/trainer/customers/${customerId}/meal-plans`);
-      return res.json();
-    }
-  });
-
-  const removeMealPlanMutation = useMutation({
-    mutationFn: async (planId: string) => {
-      const res = await apiRequest('DELETE', `/api/trainer/meal-plans/${planId}`);
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Meal Plan Removed",
-        description: "Successfully removed meal plan assignment",
-      });
-      queryClient.invalidateQueries({ queryKey: ['customerMealPlans', customerId] });
-      queryClient.invalidateQueries({ queryKey: ['trainerCustomers'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Removal Failed",
-        description: error.message || "Failed to remove meal plan",
-        variant: "destructive",
-      });
-    }
-  });
-
-  const mealPlans = mealPlansData?.mealPlans || [];
-
-  if (isLoading) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-20 bg-gray-100 rounded-lg animate-pulse" />
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h4 className="font-medium text-gray-900">
-          Assigned Meal Plans ({mealPlans.length})
-        </h4>
-        <MealPlanAssignmentDialog 
-          customerId={customerId}
-          customerEmail={customerEmail}
-          onSuccess={() => {}}
-        />
-      </div>
-
-      {mealPlans.length === 0 ? (
-        <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
-          <ChefHat className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-          <p>No meal plans assigned yet</p>
-          <p className="text-sm">Click "Assign Plan" to get started</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {mealPlans.map((assignment) => (
-            <Card key={assignment.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <h5 className="font-medium text-gray-900">
-                      {assignment.mealPlanData.planName}
-                    </h5>
-                    <p className="text-sm text-gray-600 mb-2">
-                      {assignment.mealPlanData.fitnessGoal?.replace('_', ' ')} • {assignment.mealPlanData.days} days
-                    </p>
-                    <div className="flex items-center space-x-4 text-xs text-gray-500">
-                      <div className="flex items-center space-x-1">
-                        <Target className="h-3 w-3" />
-                        <span>{assignment.mealPlanData.dailyCalorieTarget} cal/day</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>Assigned {new Date(assignment.assignedAt).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <SimplePDFExportButton
-                      mealPlan={assignment}
-                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                      size="sm"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeMealPlanMutation.mutate(assignment.id)}
-                      disabled={removeMealPlanMutation.isPending}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function CustomerManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const { data: customersData, isLoading, error } = useQuery<{ customers: Customer[]; total: number }>({
+  // Fetch customers assigned to this trainer
+  const { data: customersData, isLoading: customersLoading, error } = useQuery<{customers: Customer[]}>({
     queryKey: ['trainerCustomers'],
     queryFn: async () => {
       const res = await apiRequest('GET', '/api/trainer/customers');
@@ -315,12 +197,31 @@ export default function CustomerManagement() {
     }
   });
 
+  // Fetch customer protocol assignments
+  const { data: protocolAssignments } = useQuery<HealthProtocolAssignment[]>({
+    queryKey: ['customerProtocolAssignments'],
+    queryFn: async () => {
+      const res = await apiRequest('GET', '/api/trainer/customer-protocol-assignments');
+      return res.json();
+    }
+  });
+
   const customers = customersData?.customers || [];
-  const filteredCustomers = customers.filter(customer => 
+  const assignments = protocolAssignments || [];
+
+  // Filter customers based on search term
+  const filteredCustomers = customers.filter(customer =>
     customer.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // If a customer is selected, show the detail view
+  // Get protocol count for a customer
+  const getCustomerProtocolCount = (customerId: string) => {
+    return assignments.filter(assignment => 
+      assignment.customerId === customerId && 
+      assignment.status === 'active'
+    ).length;
+  };
+
   if (selectedCustomer) {
     return (
       <CustomerDetailView 
@@ -330,25 +231,16 @@ export default function CustomerManagement() {
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="h-12 bg-gray-100 rounded-lg animate-pulse" />
-        <div className="grid gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 bg-gray-100 rounded-lg animate-pulse" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
-      <Card className="border-red-200 bg-red-50">
-        <CardContent className="p-6 text-center">
-          <div className="text-red-600">Failed to load customers</div>
-          <p className="text-sm text-red-500 mt-2">{(error as Error).message}</p>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center">
+            <p className="text-red-600">Error loading customers: {error.message}</p>
+            <Button className="mt-4" onClick={() => queryClient.invalidateQueries({ queryKey: ['trainerCustomers'] })}>
+              Try Again
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
@@ -357,79 +249,188 @@ export default function CustomerManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Customer Management</h2>
-          <p className="text-gray-600">
-            Manage meal plan assignments for your customers
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Users className="h-8 w-8" />
+          <div>
+            <h1 className="text-3xl font-bold">Customer Management</h1>
+            <p className="text-muted-foreground">
+              Manage your {customers.length} assigned customers
+            </p>
+          </div>
         </div>
-        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-          {customers.length} Customer{customers.length !== 1 ? 's' : ''}
-        </Badge>
+
+        <div className="flex items-center space-x-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search customers..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 w-64"
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <Input
-          placeholder="Search customers by email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-
-      {/* Customers List */}
-      {filteredCustomers.length === 0 ? (
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-12 text-center">
-            <Users className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {customers.length === 0 ? 'No Customers Yet' : 'No Matching Customers'}
-            </h3>
-            <p className="text-gray-600">
-              {customers.length === 0 
-                ? 'Start by assigning meal plans to customers through the admin panel.'
-                : 'Try adjusting your search terms.'}
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{customers.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Active customer relationships
             </p>
           </CardContent>
         </Card>
-      ) : (
-        <div className="space-y-4">
-          {filteredCustomers.map((customer) => (
-            <Card key={customer.id} className="overflow-hidden">
-              <CardHeader 
-                className="cursor-pointer hover:bg-gray-50 transition-colors"
-                onClick={() => setSelectedCustomer(customer)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <User className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{customer.email}</CardTitle>
-                      <div className="flex items-center space-x-2 text-sm text-gray-500">
-                        <Clock className="h-3 w-3" />
-                        <span>
-                          Customer since {new Date(customer.firstAssignedAt).toLocaleDateString()}
-                        </span>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Protocols</CardTitle>
+            <Zap className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {assignments.filter(a => a.status === 'active').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Currently assigned protocols
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">This Month</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {customers.filter(c => {
+                const assignedDate = new Date(c.firstAssignedAt);
+                const now = new Date();
+                return assignedDate.getMonth() === now.getMonth() && 
+                       assignedDate.getFullYear() === now.getFullYear();
+              }).length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              New customers this month
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg Protocols</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {customers.length > 0 ? (assignments.length / customers.length).toFixed(1) : '0'}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Protocols per customer
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Customer List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Assigned Customers</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {customersLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : filteredCustomers.length === 0 ? (
+            <div className="text-center py-8">
+              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                {searchTerm ? 'No customers found matching your search' : 'No customers assigned yet'}
+              </p>
+              {!searchTerm && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Customers will appear here when they accept your invitations
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredCustomers.map((customer) => {
+                const protocolCount = getCustomerProtocolCount(customer.id);
+                const lastAssignment = assignments
+                  .filter(a => a.customerId === customer.id)
+                  .sort((a, b) => new Date(b.assignedAt).getTime() - new Date(a.assignedAt).getTime())[0];
+
+                return (
+                  <div
+                    key={customer.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => setSelectedCustomer(customer)}
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                      
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <p className="font-medium">{customer.email}</p>
+                          {protocolCount > 0 && (
+                            <Badge variant="secondary">
+                              {protocolCount} protocol{protocolCount !== 1 ? 's' : ''}
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                          <span className="flex items-center space-x-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>Joined {new Date(customer.firstAssignedAt).toLocaleDateString()}</span>
+                          </span>
+                          
+                          {lastAssignment && (
+                            <span className="flex items-center space-x-1">
+                              <Clock className="h-3 w-3" />
+                              <span>Last protocol {new Date(lastAssignment.assignedAt).toLocaleDateString()}</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
+
+                    <div className="flex items-center space-x-2">
+                      <ProtocolAssignmentDialog 
+                        customerId={customer.id}
+                        customerEmail={customer.email}
+                        onSuccess={() => {
+                          queryClient.invalidateQueries({ queryKey: ['customerProtocolAssignments'] });
+                        }}
+                      />
+                      
+                      <SimplePDFExportButton 
+                        customerId={customer.id}
+                        customerEmail={customer.email}
+                        data={{
+                          protocols: assignments.filter(a => a.customerId === customer.id),
+                          protocolCount
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                      Active
-                    </Badge>
-                    <MoreVertical className="h-4 w-4 text-gray-400" />
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
-      )}
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

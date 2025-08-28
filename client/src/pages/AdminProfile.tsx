@@ -460,7 +460,7 @@ export default function AdminProfile() {
                         </div>
                       </div>
                       <PDFExportButton
-                        mealPlans={allMealPlans.flatMap(entry => entry.mealPlans)}
+                        data={allMealPlans.flatMap(entry => entry.mealPlans)}
                         variant="outline"
                         size="sm"
                       >
@@ -497,8 +497,8 @@ export default function AdminProfile() {
                               </div>
                             </div>
                             <PDFExportButton
-                              mealPlans={entry.mealPlans}
-                              customerName={entry.customer.email}
+                              data={entry.mealPlans}
+                              customerEmail={entry.customer.email}
                               variant="ghost"
                               size="sm"
                             >

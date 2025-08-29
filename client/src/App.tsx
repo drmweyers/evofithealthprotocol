@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import LoginPage from './pages/LoginPage';
 import HealthProtocolDashboard from './components/HealthProtocolDashboard';
 import Admin from './pages/Admin';
+import Trainer from './pages/Trainer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[] }> = ({ 
@@ -25,7 +26,17 @@ const PrivateRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/protocols" replace />;
+    // Redirect to appropriate dashboard based on user role
+    switch (user.role) {
+      case 'admin':
+        return <Navigate to="/admin" replace />;
+      case 'trainer':
+        return <Navigate to="/trainer" replace />;
+      case 'customer':
+        return <Navigate to="/my-meal-plans" replace />;
+      default:
+        return <Navigate to="/" replace />;
+    }
   }
 
   return <>{children}</>;
@@ -39,11 +50,20 @@ function App() {
           <Toaster position="top-right" />
           <Routes>
             <Route path="/" element={<LoginPage />} />
+            <Route path="/login" element={<LoginPage />} />
             <Route 
               path="/protocols" 
               element={
                 <PrivateRoute allowedRoles={['admin', 'trainer']}>
                   <HealthProtocolDashboard />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/trainer" 
+              element={
+                <PrivateRoute allowedRoles={['trainer']}>
+                  <Trainer />
                 </PrivateRoute>
               } 
             />

@@ -57,10 +57,10 @@ const LoginPage = () => {
           navigate('/admin');
           break;
         case 'trainer':
-          navigate('/protocols');
+          navigate('/trainer');
           break;
         case 'customer':
-          navigate('/protocols');
+          navigate('/my-meal-plans');
           break;
         default:
           navigate('/');

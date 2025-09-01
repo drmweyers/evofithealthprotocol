@@ -537,6 +537,18 @@ git checkout -b feature/performance-optimization
 | Medium | Mobile UI | Frontend Agent | QA Agent | 1 week |
 | Medium | API Optimization | Backend Agent | DevOps Agent | 1 week |
 
+## 🔐 PERMANENT TEST ACCOUNT CREDENTIALS
+
+### ⚠️ NEVER CHANGE THESE CREDENTIALS - They are standardized across all environments
+
+| Role | Email | Password |
+|------|-------|----------|
+| **Admin** | `admin@fitmeal.pro` | `AdminPass123` |
+| **Trainer** | `trainer.test@evofitmeals.com` | `TestTrainer123!` |
+| **Customer** | `customer.test@evofitmeals.com` | `TestCustomer123!` |
+
+**Reference:** See `TEST_CREDENTIALS.md` for complete details and API commands
+
 ## 🚀 BMAD METHOD™ INTEGRATION
 
 ### What is BMAD METHOD™?

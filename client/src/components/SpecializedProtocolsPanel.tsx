@@ -348,7 +348,7 @@ const SpecializedProtocolsPanel: React.FC<SpecializedProtocolsPanelProps> = ({
       });
       console.log('🔧 DEBUG: Full protocol data:', protocolData);
 
-      const response = await fetch('/api/trainer/health-protocols', {
+      const response = await fetch('/api/trainer/protocols', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

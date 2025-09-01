@@ -7,7 +7,7 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from '../db.js';
-import { users, trainerCustomerRelationships, protocolAssignments } from '../../shared/schema.js';
+import { users } from '../../shared/schema.js';
 import { eq, and, or, sql } from 'drizzle-orm';
 import {
   requireAuthWithHierarchy,

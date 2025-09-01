@@ -18,10 +18,9 @@
 - **Frontend Remaining:** 2-3 days effort
 
 ### Sprint Backlog
-1. STORY-007: Remove Health Protocols Tab from Trainer Dashboard (Not Started)
-2. STORY-005: Mobile-Responsive Dashboard Enhancement (Ready)
-3. STORY-003: Email System Domain Verification (Deferred - foundational issues first)
-4. STORY-006: Advanced Client Progress Analytics (Ready)
+1. STORY-005: Mobile-Responsive Dashboard Enhancement (Ready)
+2. STORY-003: Email System Domain Verification (Deferred - foundational issues first)
+3. STORY-006: Advanced Client Progress Analytics (Ready)
 
 ### Recently Completed
 - **STORY-001:** Test Framework Stabilization ✅ (Completed 2025-08-25)

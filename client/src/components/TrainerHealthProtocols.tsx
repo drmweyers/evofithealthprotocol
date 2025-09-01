@@ -58,6 +58,7 @@ import { useAuth } from '../contexts/AuthContext';
 // Import specialized protocol components
 import SpecializedProtocolsPanel from './SpecializedProtocolsPanel';
 import ProtocolCreationWizard from './ProtocolCreationWizard';
+import ProtocolWizardEnhanced from './protocol-wizard/ProtocolWizardEnhanced';
 
 interface TrainerProtocol {
   id: string;
@@ -97,12 +98,13 @@ export default function TrainerHealthProtocols() {
   const [protocolName, setProtocolName] = useState('');
   const [protocolDescription, setProtocolDescription] = useState('');
   const [showWizard, setShowWizard] = useState(false);
+  const [showEnhancedWizard, setShowEnhancedWizard] = useState(false);
 
   // Fetch trainer's protocols
   const { data: trainerProtocols, isLoading: protocolsLoading } = useQuery<TrainerProtocol[]>({
-    queryKey: ['/api/trainer/health-protocols'],
+    queryKey: ['/api/trainer/protocols'],
     queryFn: async () => {
-      const response = await fetch('/api/trainer/health-protocols', {
+      const response = await fetch('/api/trainer/protocols', {
         credentials: 'include',
       });
       if (!response.ok) throw new Error('Failed to fetch health protocols');
@@ -127,7 +129,7 @@ export default function TrainerHealthProtocols() {
   // Assign protocol to clients mutation
   const assignProtocolMutation = useMutation({
     mutationFn: async (data: { protocolId: string; clientIds: string[]; notes?: string }) => {
-      const response = await fetch('/api/trainer/health-protocols/assign', {
+      const response = await fetch('/api/trainer/protocols/' + data.protocolId + '/assign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -137,7 +139,7 @@ export default function TrainerHealthProtocols() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/trainer/health-protocols'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/trainer/protocols'] });
       toast({
         title: 'Protocol Assigned',
         description: 'The health protocol has been assigned to selected clients.',
@@ -157,7 +159,7 @@ export default function TrainerHealthProtocols() {
   // Save protocol mutation
   const saveProtocolMutation = useMutation({
     mutationFn: async (protocolData: any) => {
-      const response = await fetch('/api/trainer/health-protocols', {
+      const response = await fetch('/api/trainer/protocols', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -167,7 +169,7 @@ export default function TrainerHealthProtocols() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/trainer/health-protocols'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/trainer/protocols'] });
       toast({
         title: 'Protocol Saved',
         description: 'Your health protocol has been saved successfully.',
@@ -234,7 +236,12 @@ export default function TrainerHealthProtocols() {
 
         {/* Create Protocols Tab */}
         <TabsContent value="create" className="space-y-6">
-          {showWizard ? (
+          {showEnhancedWizard ? (
+            <ProtocolWizardEnhanced
+              onComplete={handleWizardComplete}
+              onCancel={() => setShowEnhancedWizard(false)}
+            />
+          ) : showWizard ? (
             <ProtocolCreationWizard
               onComplete={handleWizardComplete}
               onCancel={handleWizardCancel}
@@ -254,12 +261,12 @@ export default function TrainerHealthProtocols() {
                 <CardContent className="space-y-6">
                   {/* Creation Method Selection */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setShowWizard(true)}>
+                    <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setShowEnhancedWizard(true)}>
                       <CardContent className="p-6 text-center">
                         <Sparkles className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold mb-2">Guided Protocol Wizard</h3>
+                        <h3 className="text-lg font-semibold mb-2">Enhanced Protocol Wizard</h3>
                         <p className="text-sm text-gray-600 mb-4">
-                          Step-by-step guidance with AI-powered optimization, safety validation, and template selection.
+                          Advanced 7-step wizard with AI generation, medical safety validation, and protocol versioning.
                         </p>
                         <Badge className="bg-blue-100 text-blue-700">Recommended</Badge>
                       </CardContent>
@@ -318,7 +325,7 @@ export default function TrainerHealthProtocols() {
                 if (config.longevity?.isEnabled || config.parasiteCleanse?.isEnabled || 
                     (config.clientAilments?.includeInMealPlanning && config.clientAilments?.selectedAilments?.length > 0)) {
                   // Refresh the protocols list
-                  queryClient.invalidateQueries({ queryKey: ['trainer', 'health-protocols'] });
+                  queryClient.invalidateQueries({ queryKey: ['trainer', 'protocols'] });
                   // Switch to manage tab to show the newly created protocol
                   setActiveTab('manage');
                   toast({
@@ -529,6 +536,25 @@ export default function TrainerHealthProtocols() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Enhanced Protocol Creation Wizard */}
+      {showEnhancedWizard && (
+        <Dialog open={showEnhancedWizard} onOpenChange={setShowEnhancedWizard}>
+          <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+            <ProtocolWizardEnhanced
+              onComplete={(protocolData) => {
+                setShowEnhancedWizard(false);
+                toast({
+                  title: 'Protocol Created',
+                  description: 'Your enhanced protocol has been created successfully.',
+                });
+                queryClient.invalidateQueries({ queryKey: ['/api/trainer/protocols'] });
+              }}
+              onCancel={() => setShowEnhancedWizard(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

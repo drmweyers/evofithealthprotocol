@@ -32,8 +32,13 @@ RUN npm install
 
 COPY --chown=appuser:appgroup . .
 
-EXPOSE 3500 24678
-CMD ["npm", "run", "dev"]
+# Install client dependencies
+RUN cd client && npm install
+
+EXPOSE 3501 24678
+
+# Start only the backend - frontend will be run separately or in production build
+CMD ["npx", "tsx", "server/index.ts"]
 
 # Build stage - CRITICAL: Verify drizzle.config.ts exists
 FROM base AS builder

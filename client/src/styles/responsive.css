@@ -1,0 +1,30 @@
+/* Mobile styles */
+@media (max-width: 767px) {
+  .mobile-header {
+    display: block !important;
+  }
+  
+  .desktop-header {
+    display: none !important;
+  }
+}
+
+/* Desktop styles */
+@media (min-width: 768px) {
+  .mobile-header {
+    display: none !important;
+  }
+  
+  .desktop-header {
+    display: block !important;
+  }
+}
+
+/* Default to mobile-first */
+.mobile-header {
+  display: block;
+}
+
+.desktop-header {
+  display: none;
+}

@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import type { User, UserRole, LoginCredentials, RegisterCredentials, AuthContextValue } from '../types/auth';
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3501/api';
 
 // Custom event for cross-tab auth state synchronization
 const AUTH_STATE_CHANGE_EVENT = 'authStateChange';

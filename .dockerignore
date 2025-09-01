@@ -74,6 +74,9 @@ local/
 *.log
 *.dev
 *.bak
+*.tar
+*.tar.gz
+*.zip
 
 # 12. Migration files (if not needed in container)
 migrations/

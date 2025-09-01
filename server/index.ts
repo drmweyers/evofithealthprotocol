@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'path';
 import { 
@@ -22,7 +23,8 @@ import passwordRoutes from './passwordRoutes';
 import invitationRoutes from './invitationRoutes';
 import specializedRoutes from './routes/specializedRoutes';
 import protocolRoutes from './routes/protocolRoutes';
-import roleTestRoutes from './routes/roleTestRoutes';
+import protocolTemplateRoutes from './routes/protocolTemplateRoutes';
+// import roleTestRoutes from './routes/roleTestRoutes'; // Temporarily disabled - missing schema tables
 
 // Load environment variables
 dotenv.config();
@@ -53,8 +55,8 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: true, limit: '500kb' }));
 
-// For now, cookies will be handled manually in auth routes
-// TODO: Add cookie-parser after Docker rebuild
+// Cookie parsing middleware
+app.use(cookieParser());
 
 // Input sanitization - MUST be after body parsing
 app.use(sanitizeInput);
@@ -84,7 +86,8 @@ app.use('/api/progress', progressRoutes);
 app.use('/api/pdf', pdfRoutes);
 app.use('/api/specialized', specializedRoutes);
 app.use('/api/protocols', protocolRoutes);
-app.use('/api/roles', roleTestRoutes);
+app.use('/api/protocol-templates', protocolTemplateRoutes);
+// app.use('/api/roles', roleTestRoutes); // Temporarily disabled - missing schema tables
 
 console.log('✅ All API routes registered');
 console.log('✅ Protocol optimization routes registered');
@@ -104,10 +107,10 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
+// Serve static files in production or development
+const clientBuildPath = path.join(process.cwd(), 'client', 'dist');
+if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'development') {
   // Serve static files from client build directory
-  const clientBuildPath = path.join(process.cwd(), 'client', 'dist-evofithealthprotocol');
   app.use(express.static(clientBuildPath));
   
   // Handle client-side routing - send index.html for non-API routes
@@ -117,6 +120,7 @@ if (process.env.NODE_ENV === 'production') {
     }
     res.sendFile(path.join(clientBuildPath, 'index.html'));
   });
+  console.log('✅ Serving frontend from:', clientBuildPath);
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Health Protocol Production Server running on port ${PORT}`);

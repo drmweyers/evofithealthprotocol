@@ -2,55 +2,16 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import TrainerHealthProtocols from './TrainerHealthProtocols';
-import { LogOut, FileText, Shield, Home } from 'lucide-react';
+import { FileText, Shield } from 'lucide-react';
+import { ResponsiveHeader } from './ResponsiveHeader';
 
 const HealthProtocolDashboard: React.FC = () => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('protocols');
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navigation Header */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <Shield className="h-8 w-8 text-blue-600 mr-3" />
-              <h1 className="text-xl font-bold text-gray-900">
-                Health Protocol Management System
-              </h1>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
-                Welcome, {user?.name || user?.email}
-              </span>
-              {user?.role === 'admin' && (
-                <button
-                  onClick={() => navigate('/admin')}
-                  className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition"
-                >
-                  <Home className="h-4 w-4 mr-1" />
-                  Admin
-                </button>
-              )}
-              <button
-                onClick={handleLogout}
-                className="flex items-center px-3 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition"
-              >
-                <LogOut className="h-4 w-4 mr-1" />
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <ResponsiveHeader title="Health Protocol Management System" showAdminButton={true} />
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

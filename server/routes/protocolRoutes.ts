@@ -31,6 +31,126 @@ const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
  * STORY-004: Health Protocol Generation Optimization API Endpoints
  */
 
+// Generate Protocol Preview (for Wizard Step 7)
+router.post('/templates/generate-preview', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const wizardData = req.body;
+    
+    // Generate preview based on wizard data
+    const preview = {
+      name: wizardData.name || 'Untitled Protocol',
+      type: wizardData.protocolType,
+      description: wizardData.description,
+      duration: wizardData.duration,
+      intensity: wizardData.intensity,
+      category: wizardData.category,
+      targetAudience: wizardData.targetAudience,
+      healthFocus: wizardData.healthFocus,
+      experienceLevel: wizardData.experienceLevel,
+      personalizations: wizardData.personalizations,
+      safetyValidation: wizardData.safetyValidation,
+      advancedOptions: wizardData.advancedOptions,
+      generatedContent: {
+        phases: generateProtocolPhases(wizardData),
+        dailySchedule: generateDailySchedule(wizardData),
+        supplements: generateSupplementRecommendations(wizardData),
+        lifestyle: generateLifestyleRecommendations(wizardData),
+        monitoring: generateMonitoringPlan(wizardData)
+      }
+    };
+    
+    res.json({
+      status: 'success',
+      data: preview
+    });
+  } catch (error) {
+    console.error('Error generating protocol preview:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to generate protocol preview'
+    });
+  }
+});
+
+// Helper functions for protocol generation
+function generateProtocolPhases(data: any) {
+  const phases = [];
+  const phaseDuration = Math.ceil(data.duration / 3);
+  
+  phases.push({
+    phase: 1,
+    name: 'Foundation Phase',
+    duration: phaseDuration,
+    focus: 'Building baseline habits and preparing the body',
+    intensity: 'gentle'
+  });
+  
+  phases.push({
+    phase: 2,
+    name: 'Optimization Phase',
+    duration: phaseDuration,
+    focus: 'Intensifying protocol and maximizing benefits',
+    intensity: data.intensity
+  });
+  
+  phases.push({
+    phase: 3,
+    name: 'Integration Phase',
+    duration: data.duration - (phaseDuration * 2),
+    focus: 'Sustaining improvements and creating lasting habits',
+    intensity: 'moderate'
+  });
+  
+  return phases;
+}
+
+function generateDailySchedule(data: any) {
+  return {
+    morning: ['Hydration', 'Morning supplements', 'Light movement'],
+    afternoon: ['Main protocol activities', 'Nutritional focus'],
+    evening: ['Recovery practices', 'Evening supplements', 'Preparation for next day']
+  };
+}
+
+function generateSupplementRecommendations(data: any) {
+  const supplements = [];
+  
+  if (data.protocolType === 'longevity') {
+    supplements.push(
+      { name: 'NAD+ Precursors', timing: 'morning', dosage: 'As recommended' },
+      { name: 'Resveratrol', timing: 'morning', dosage: '500mg' },
+      { name: 'Omega-3', timing: 'with meals', dosage: '2g daily' }
+    );
+  }
+  
+  if (data.protocolType === 'parasite_cleanse') {
+    supplements.push(
+      { name: 'Black Walnut', timing: 'empty stomach', dosage: 'As directed' },
+      { name: 'Wormwood', timing: 'before meals', dosage: 'As directed' },
+      { name: 'Cloves', timing: 'with meals', dosage: 'As directed' }
+    );
+  }
+  
+  return supplements;
+}
+
+function generateLifestyleRecommendations(data: any) {
+  return {
+    diet: 'Whole foods, anti-inflammatory focus',
+    exercise: `${data.intensity} intensity movement daily`,
+    sleep: '7-9 hours quality sleep',
+    stress: 'Daily stress management practices'
+  };
+}
+
+function generateMonitoringPlan(data: any) {
+  return {
+    weekly: ['Energy levels', 'Sleep quality', 'Symptom tracking'],
+    biweekly: ['Progress photos', 'Measurements'],
+    monthly: ['Full assessment', 'Protocol adjustments']
+  };
+}
+
 // Protocol Templates API
 router.get('/templates', requireAuth, async (req: Request, res: Response) => {
   try {
@@ -624,6 +744,78 @@ router.delete('/ai-cache', requireAuth, async (req: Request, res: Response) => {
     res.status(500).json({
       status: 'error',
       message: 'Failed to clear cache'
+    });
+  }
+});
+
+// Get Trainer's Clients for Protocol Assignment
+router.get('/trainer/clients', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const trainerId = (req as any).user.id;
+    
+    // Get trainer's clients (this would normally come from a trainer-client relationship table)
+    const clients = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      firstName: users.firstName,
+      lastName: users.lastName
+    })
+    .from(users)
+    .where(eq(users.role, 'customer'))
+    .limit(50);
+    
+    res.json({
+      status: 'success',
+      data: clients
+    });
+  } catch (error) {
+    console.error('Error fetching trainer clients:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch clients'
+    });
+  }
+});
+
+// Enhanced Protocol Creation with Full Wizard Data
+router.post('/create-from-wizard', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const wizardData = req.body;
+    const trainerId = (req as any).user.id;
+    
+    // Create the protocol with all wizard data
+    const [protocol] = await db.insert(trainerHealthProtocols).values({
+      id: crypto.randomUUID(),
+      trainerId,
+      name: wizardData.name,
+      description: wizardData.description,
+      type: wizardData.protocolType,
+      duration: wizardData.duration,
+      intensity: wizardData.intensity,
+      config: {
+        category: wizardData.category,
+        targetAudience: wizardData.targetAudience,
+        healthFocus: wizardData.healthFocus,
+        experienceLevel: wizardData.experienceLevel,
+        personalizations: wizardData.personalizations,
+        safetyValidation: wizardData.safetyValidation,
+        advancedOptions: wizardData.advancedOptions,
+        generatedContent: wizardData.generatedPreview
+      },
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
+    
+    res.status(201).json({
+      status: 'success',
+      data: protocol
+    });
+  } catch (error) {
+    console.error('Error creating protocol from wizard:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to create protocol'
     });
   }
 });

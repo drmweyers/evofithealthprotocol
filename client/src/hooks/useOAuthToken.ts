@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 
 const AUTH_STATE_CHANGE_EVENT = 'authStateChange';
 
 export function useOAuthToken() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   
   useEffect(() => {
     // Check for OAuth token in URL on component mount

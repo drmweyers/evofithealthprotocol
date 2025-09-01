@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const AUTH_STATE_CHANGE_EVENT = 'authStateChange';
 
 export default function OAuthCallbackPage() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const { user, isLoading } = useAuth();
 
   useEffect(() => {

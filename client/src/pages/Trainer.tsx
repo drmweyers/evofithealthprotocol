@@ -1,13 +1,12 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "../components/ui/card";
-import { Button } from "../components/ui/button";
 import { useAuth } from "../contexts/AuthContext";
 import CustomerManagement from "../components/CustomerManagement";
+import { ResponsiveHeader } from "../components/ResponsiveHeader";
 
 export default function Trainer() {
   const { user } = useAuth();
-
 
   const { data: stats } = useQuery({
     queryKey: ['trainerStats'],
@@ -21,18 +20,21 @@ export default function Trainer() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-      {/* Header Section */}
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 mb-2">
-          Welcome, {user?.email?.split('@')[0] || 'Trainer'}
-        </h1>
-        <p className="text-sm sm:text-base text-slate-600">
-          Manage your clients and their fitness journeys.
-        </p>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <ResponsiveHeader title="Trainer Dashboard" showAdminButton={false} />
 
-      {/* Stats Cards */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        {/* Header Section */}
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 mb-2">
+            Welcome, {user?.email?.split('@')[0] || 'Trainer'}
+          </h1>
+          <p className="text-sm sm:text-base text-slate-600">
+            Manage your clients and their fitness journeys.
+          </p>
+        </div>
+
+      {/* Stats Cards - Mobile-first responsive grid */}
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
           <Card>
@@ -93,18 +95,19 @@ export default function Trainer() {
         </div>
       )}
 
-      {/* Customer Management Section */}
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-green-500 to-blue-600 rounded-xl shadow-lg">
-            <i className="fas fa-users text-white text-2xl"></i>
+        {/* Customer Management Section */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-green-500 to-blue-600 rounded-xl shadow-lg">
+              <i className="fas fa-users text-white text-2xl"></i>
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">Customer Management</h2>
+              <p className="text-slate-600">Manage your clients and track their fitness progress</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">Customer Management</h2>
-            <p className="text-slate-600">Manage your clients and track their fitness progress</p>
-          </div>
+          <CustomerManagement />
         </div>
-        <CustomerManagement />
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import React, { ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
-import { useLocation } from 'wouter';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,12 +29,13 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   const { user, logout } = useAuth();
-  const [location, setLocation] = useLocation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   const handleLogout = () => {
     logout();
-    setLocation('/login');
+    navigate('/login');
   };
 
 
@@ -75,14 +76,14 @@ const Layout = ({ children }: LayoutProps) => {
               {/* Desktop Navigation */}
               <nav className="hidden lg:ml-6 xl:ml-8 lg:flex lg:space-x-4 xl:space-x-8">
                 {navigation.map((item) => {
-                  const isActive = location === item.href;
+                  const isActive = location.pathname === item.href;
                   return (
                     <a
                       key={item.name}
                       href={item.href}
                       onClick={(e) => {
                         e.preventDefault();
-                        setLocation(item.href);
+                        navigate(item.href);
                       }}
                       className={cn(
                         "inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors duration-200 whitespace-nowrap",
@@ -128,7 +129,7 @@ const Layout = ({ children }: LayoutProps) => {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setLocation('/profile')}>
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
                     <User className="w-4 h-4 mr-2" />
                     Profile
                   </DropdownMenuItem>
@@ -171,7 +172,7 @@ const Layout = ({ children }: LayoutProps) => {
                     href={item.href}
                     onClick={(e) => {
                       e.preventDefault();
-                      setLocation(item.href);
+                      navigate(item.href);
                       setIsMobileMenuOpen(false);
                     }}
                     className={cn(

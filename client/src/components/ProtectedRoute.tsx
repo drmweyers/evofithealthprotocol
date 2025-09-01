@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -21,7 +21,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   allowedRoles 
 }) => {
   const { user, isAuthenticated, isLoading } = useAuth();
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Don't redirect while still loading

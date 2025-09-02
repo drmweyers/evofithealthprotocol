@@ -54,6 +54,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { sanitizeProtocolName, sanitizeDescription } from '../utils/sanitization';
 
 // Import specialized protocol components
 import SpecializedProtocolsPanel from './SpecializedProtocolsPanel';
@@ -296,7 +297,8 @@ export default function TrainerHealthProtocols() {
                           id="protocol-name"
                           placeholder="e.g., 30-Day Longevity Protocol"
                           value={protocolName}
-                          onChange={(e) => setProtocolName(e.target.value)}
+                          onChange={(e) => setProtocolName(sanitizeProtocolName(e.target.value))}
+                          maxLength={100}
                         />
                       </div>
                       <div>
@@ -305,8 +307,9 @@ export default function TrainerHealthProtocols() {
                           id="protocol-description"
                           placeholder="Brief description of the protocol's goals and benefits"
                           value={protocolDescription}
-                          onChange={(e) => setProtocolDescription(e.target.value)}
+                          onChange={(e) => setProtocolDescription(sanitizeDescription(e.target.value))}
                           className="min-h-[80px]"
+                          maxLength={1000}
                         />
                       </div>
                     </div>
@@ -538,23 +541,24 @@ export default function TrainerHealthProtocols() {
       </Dialog>
 
       {/* Enhanced Protocol Creation Wizard */}
-      {showEnhancedWizard && (
-        <Dialog open={showEnhancedWizard} onOpenChange={setShowEnhancedWizard}>
-          <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
-            <ProtocolWizardEnhanced
-              onComplete={(protocolData) => {
-                setShowEnhancedWizard(false);
-                toast({
-                  title: 'Protocol Created',
-                  description: 'Your enhanced protocol has been created successfully.',
-                });
-                queryClient.invalidateQueries({ queryKey: ['/api/trainer/protocols'] });
-              }}
-              onCancel={() => setShowEnhancedWizard(false)}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
+      <Dialog open={showEnhancedWizard} onOpenChange={setShowEnhancedWizard}>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Protocol Creation Wizard</DialogTitle>
+          </DialogHeader>
+          <ProtocolWizardEnhanced
+            onComplete={(protocolData) => {
+              setShowEnhancedWizard(false);
+              toast({
+                title: 'Protocol Created',
+                description: 'Your enhanced protocol has been created successfully.',
+              });
+              queryClient.invalidateQueries({ queryKey: ['/api/trainer/protocols'] });
+            }}
+            onCancel={() => setShowEnhancedWizard(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

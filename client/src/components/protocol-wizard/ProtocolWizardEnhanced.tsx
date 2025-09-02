@@ -69,6 +69,14 @@ import {
 } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
 import { cn } from '../../lib/utils';
+import { 
+  sanitizeProtocolName, 
+  sanitizeDescription, 
+  sanitizeStringArray,
+  validateProtocolForm,
+  hasErrors,
+  sanitizeProtocolFormData 
+} from '../../utils/sanitization';
 
 // Types
 interface ProtocolTemplate {
@@ -168,6 +176,7 @@ export default function ProtocolWizardEnhanced({
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [formErrors, setFormErrors] = useState<any>({});
   
   // Fetch clients
   const { data: clients, isLoading: loadingClients } = useQuery({
@@ -270,6 +279,54 @@ export default function ProtocolWizardEnhanced({
   });
   
   const handleNext = async () => {
+    // Validate current step before proceeding
+    const validationErrors: any = {};
+    
+    // Step 1: Client selection validation
+    if (wizardData.step === 1 && !wizardData.client) {
+      toast({
+        title: 'Selection Required',
+        description: 'Please select a client before proceeding.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Step 2: Template selection validation
+    if (wizardData.step === 2 && !wizardData.template) {
+      toast({
+        title: 'Selection Required',
+        description: 'Please select a protocol template before proceeding.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Step 3: Health information validation
+    if (wizardData.step === 3) {
+      if (wizardData.customizations.conditions.length === 0 && 
+          wizardData.customizations.medications.length === 0) {
+        toast({
+          title: 'Information Required',
+          description: 'Please provide at least some health information.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+    
+    // Step 4: Customization validation
+    if (wizardData.step === 4) {
+      if (wizardData.customizations.goals.length === 0) {
+        toast({
+          title: 'Goals Required',
+          description: 'Please select at least one health goal.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+    
     if (wizardData.step === 5) {
       // Generate AI protocol
       setIsGenerating(true);
@@ -324,14 +381,30 @@ export default function ProtocolWizardEnhanced({
   };
   
   const handleFinalize = async () => {
-    await createProtocolMutation.mutateAsync({
+    // Sanitize all data before saving
+    const sanitizedData = sanitizeProtocolFormData({
       name: `${wizardData.template?.name} - ${wizardData.client?.name}`,
+      notes: wizardData.notes,
+      ...wizardData.customizations,
+    });
+    
+    await createProtocolMutation.mutateAsync({
+      name: sanitizedData.name,
       templateId: wizardData.template?.id,
       clientId: wizardData.client?.id,
       content: wizardData.protocol,
-      customizations: wizardData.customizations,
+      customizations: {
+        goals: sanitizedData.goals,
+        conditions: sanitizedData.conditions,
+        medications: sanitizedData.medications,
+        allergies: sanitizedData.allergies,
+        preferences: wizardData.customizations.preferences,
+        intensity: wizardData.customizations.intensity,
+        duration: wizardData.customizations.duration,
+        frequency: wizardData.customizations.frequency,
+      },
       safetyValidation: wizardData.safetyValidation,
-      notes: wizardData.notes,
+      notes: sanitizedData.notes,
       generateWithAI: wizardData.aiGenerated,
     });
   };
@@ -560,7 +633,7 @@ function ClientSelectionStep({ clients, selected, onSelect }: any) {
                 </div>
               </CardContent>
             </Card>
-          ))) : (
+          )) : (
             <div className="flex flex-col items-center justify-center h-[300px] text-center">
               <Users className="w-12 h-12 text-muted-foreground mb-4" />
               <p className="text-lg font-medium mb-2">No Clients Available</p>
@@ -658,10 +731,11 @@ function HealthInformationStep({ data, onChange }: any) {
   const [newAllergy, setNewAllergy] = useState('');
   
   const addItem = (type: string, value: string) => {
-    if (value.trim()) {
+    const sanitized = sanitizeDescription(value.trim());
+    if (sanitized) {
       onChange({
         ...data,
-        [type]: [...data[type], value.trim()]
+        [type]: [...data[type], sanitized]
       });
     }
   };

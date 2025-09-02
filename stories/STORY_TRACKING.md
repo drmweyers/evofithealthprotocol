@@ -9,23 +9,22 @@
 ## Active Sprint Stories
 
 ### Current Story
-- **ID:** STORY-004 (Frontend Portion)
-- **Title:** Complete Protocol Creation Wizard UI
-- **Status:** Pending (Backend Complete)
-- **Developer:** Frontend Team Required
-- **Location:** `stories/current/STORY-004-health-protocol-generation-optimization.md`
-- **Backend Completed:** 2025-08-28
-- **Frontend Remaining:** 2-3 days effort
+- **ID:** STORY-005
+- **Title:** Mobile-Responsive Dashboard Enhancement
+- **Status:** In Progress
+- **Developer:** Active Development
+- **Location:** `stories/current/STORY-005-mobile-responsive-dashboard-enhancement.md`
+- **Started:** 2025-09-02
+- **Estimated Effort:** 7 days
 
 ### Sprint Backlog
-1. STORY-005: Mobile-Responsive Dashboard Enhancement (Ready)
-2. STORY-003: Email System Domain Verification (Deferred - foundational issues first)
-3. STORY-006: Advanced Client Progress Analytics (Ready)
+1. STORY-003: Email System Domain Verification (Deferred - foundational issues first)
+2. STORY-006: Advanced Client Progress Analytics (Ready)
 
 ### Recently Completed
 - **STORY-001:** Test Framework Stabilization ✅ (Completed 2025-08-25)
 - **STORY-002:** Production Deployment Validation ✅ (Completed 2025-08-25)
-- **STORY-004:** Health Protocol Generation Optimization ✅ Backend (Completed 2025-08-28)
+- **STORY-004:** Protocol Creation Wizard Implementation ✅ (Completed 2025-09-01)
 
 ---
 

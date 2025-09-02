@@ -4,9 +4,12 @@ import { Card, CardContent } from "../components/ui/card";
 import { useAuth } from "../contexts/AuthContext";
 import CustomerManagement from "../components/CustomerManagement";
 import { ResponsiveHeader } from "../components/ResponsiveHeader";
+import { ResponsiveLayout } from "../components/ResponsiveLayout";
+import { useResponsive } from "../hooks/useResponsive";
 
 export default function Trainer() {
   const { user } = useAuth();
+  const { isMobile, isTablet } = useResponsive();
 
   const { data: stats } = useQuery({
     queryKey: ['trainerStats'],
@@ -20,8 +23,10 @@ export default function Trainer() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <ResponsiveHeader title="Trainer Dashboard" showAdminButton={false} />
+    <ResponsiveLayout>
+      {!isMobile && !isTablet && (
+        <ResponsiveHeader title="Trainer Dashboard" showAdminButton={false} />
+      )}
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         {/* Header Section */}
@@ -96,19 +101,19 @@ export default function Trainer() {
       )}
 
         {/* Customer Management Section */}
-        <div className="space-y-6">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-green-500 to-blue-600 rounded-xl shadow-lg">
-              <i className="fas fa-users text-white text-2xl"></i>
+        <div className="space-y-4 sm:space-y-6">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-green-500 to-blue-600 rounded-xl shadow-lg">
+              <i className="fas fa-users text-white text-lg sm:text-2xl"></i>
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-slate-900">Customer Management</h2>
-              <p className="text-slate-600">Manage your clients and track their fitness progress</p>
+              <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900">Customer Management</h2>
+              <p className="text-sm sm:text-base text-slate-600">Manage your clients and track their fitness progress</p>
             </div>
           </div>
           <CustomerManagement />
         </div>
       </div>
-    </div>
+    </ResponsiveLayout>
   );
 } 

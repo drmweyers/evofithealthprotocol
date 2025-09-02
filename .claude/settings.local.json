@@ -93,7 +93,14 @@
       "Read(C:\\c\\Users\\drmwe\\claude-workspace\\HealthProtocol/**)",
       "Read(C:\\c\\Users\\drmwe\\claude-workspace\\HealthProtocol/**)",
       "Read(C:\\c\\Users\\drmwe\\claude-workspace\\HealthProtocol/**)",
-      "Read(C:\\c\\Users\\drmwe\\claude-workspace\\HealthProtocol/**)"
+      "Read(C:\\c\\Users\\drmwe\\claude-workspace\\HealthProtocol/**)",
+      "Bash(mv:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(npm run dev:*)",
+      "Bash(Start-Process \"C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe\" -WindowStyle Hidden)",
+      "Bash(npm run build:*)",
+      "Bash(npm run type-check:*)"
     ],
     "deny": [],
     "ask": [],

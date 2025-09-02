@@ -6,6 +6,9 @@ import HealthProtocolDashboard from './components/HealthProtocolDashboard';
 import Admin from './pages/Admin';
 import Trainer from './pages/Trainer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { MobileNavigation } from './components/MobileNavigation';
+import { useResponsive } from './hooks/useResponsive';
+import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[] }> = ({ 
   children, 
@@ -48,6 +51,7 @@ function App() {
       <AuthProvider>
         <div className="min-h-screen bg-gray-50">
           <Toaster position="top-right" />
+          <PWAInstallPrompt />
           <Routes>
             <Route path="/" element={<LoginPage />} />
             <Route path="/login" element={<LoginPage />} />

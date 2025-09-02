@@ -93,7 +93,11 @@
       "Read(C:\\c\\Users\\drmwe\\claude-workspace\\HealthProtocol/**)",
       "Read(C:\\c\\Users\\drmwe\\claude-workspace\\HealthProtocol/**)",
       "Read(C:\\c\\Users\\drmwe\\claude-workspace\\HealthProtocol/**)",
-      "Read(C:\\c\\Users\\drmwe\\claude-workspace\\HealthProtocol/**)"
+      "Read(C:\\c\\Users\\drmwe\\claude-workspace\\HealthProtocol/**)",
+      "Bash(git checkout:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx vite build:*)"
     ],
     "deny": [],
     "ask": [],

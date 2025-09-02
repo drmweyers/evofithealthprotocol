@@ -13,8 +13,8 @@
 - **Status:** Awaiting story selection
 
 ### Sprint Backlog
-1. STORY-006: Advanced Client Progress Analytics (Ready - Next Priority)
-2. STORY-003: Email System Domain Verification (Deferred - foundational issues first)
+1. STORY-006: Advanced Client Progress Analytics (Needs Creation - Next Priority)
+2. STORY-003: Email System Domain Verification (In Backlog - Ready when needed)
 
 ### Recently Completed
 - **STORY-001:** Test Framework Stabilization ✅ (Completed 2025-08-25)

@@ -11,6 +11,9 @@ import AdminTable from "../components/AdminTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import CacheDebugger from "../components/CacheDebugger";
 import SpecializedProtocolsPanel from "../components/SpecializedProtocolsPanel";
+import { ResponsiveLayout } from "../components/ResponsiveLayout";
+import { useResponsive } from "../hooks/useResponsive";
+import { MobileCard, MobileCardContent, MobileCardHeader, MobileCardTitle } from "../components/ui/mobile-card";
 
 export default function Admin() {
   const { toast } = useToast();
@@ -18,6 +21,7 @@ export default function Admin() {
   const queryClient = useQueryClient();
   const cacheManager = createCacheManager(queryClient);
   const [activeTab, setActiveTab] = useState("health-protocols");
+  const { isMobile, isTablet } = useResponsive();
 
   // Periodic cache refresh to keep data fresh
   useEffect(() => {
@@ -156,7 +160,8 @@ export default function Admin() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+    <ResponsiveLayout>
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
       <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 sm:gap-6">
         <div className="min-w-0 flex-1">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 mb-2 truncate">
@@ -581,5 +586,6 @@ export default function Admin() {
       </Tabs>
       
     </div>
+    </ResponsiveLayout>
   );
 }

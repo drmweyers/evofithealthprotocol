@@ -11,6 +11,9 @@ import { useToast } from '../hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { apiRequest } from '../lib/queryClient';
 import ProfileImageUpload from '../components/ProfileImageUpload';
+import { ResponsiveLayout } from '../components/ResponsiveLayout';
+import { useResponsive } from '../hooks/useResponsive';
+import { MobileCard, MobileCardContent, MobileCardHeader, MobileCardTitle } from '../components/ui/mobile-card';
 import { 
   User, 
   Heart, 

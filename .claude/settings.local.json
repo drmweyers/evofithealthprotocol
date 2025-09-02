@@ -100,7 +100,8 @@
       "Bash(npm run dev:*)",
       "Bash(Start-Process \"C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe\" -WindowStyle Hidden)",
       "Bash(npm run build:*)",
-      "Bash(npm run type-check:*)"
+      "Bash(npm run type-check:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": [],

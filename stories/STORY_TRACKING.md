@@ -9,33 +9,18 @@
 ## Active Sprint Stories
 
 ### Current Story
-- **ID:** STORY-005
-- **Title:** Mobile-Responsive Dashboard Enhancement
-- **Status:** In Progress (80% Complete)
-- **Developer:** Active Development
-- **Location:** `stories/current/STORY-005-mobile-responsive-dashboard-enhancement.md`
-- **Started:** 2025-09-02
-- **Estimated Effort:** 7 days
-- **Progress:**
-  - ✅ Responsive hooks and utilities
-  - ✅ Mobile navigation with gestures
-  - ✅ PWA support and service workers
-  - ✅ Mobile-optimized components
-  - ✅ Admin page mobile responsive
-  - ✅ Mobile data tables
-  - ✅ Mobile chart components
-  - ✅ Lazy loading images
-  - ⏳ Mobile PDF viewer (remaining)
-  - ⏳ Final testing and optimization
+- **ID:** None - Ready for next story
+- **Status:** Awaiting story selection
 
 ### Sprint Backlog
-1. STORY-003: Email System Domain Verification (Deferred - foundational issues first)
-2. STORY-006: Advanced Client Progress Analytics (Ready)
+1. STORY-006: Advanced Client Progress Analytics (Ready - Next Priority)
+2. STORY-003: Email System Domain Verification (Deferred - foundational issues first)
 
 ### Recently Completed
 - **STORY-001:** Test Framework Stabilization ✅ (Completed 2025-08-25)
 - **STORY-002:** Production Deployment Validation ✅ (Completed 2025-08-25)
 - **STORY-004:** Protocol Creation Wizard Implementation ✅ (Completed 2025-09-01)
+- **STORY-005:** Mobile-Responsive Dashboard Enhancement ✅ (Completed 2025-09-02)
 
 ---
 

@@ -5,6 +5,10 @@ import LoginPage from './pages/LoginPage';
 import HealthProtocolDashboard from './components/HealthProtocolDashboard';
 import Admin from './pages/Admin';
 import Trainer from './pages/Trainer';
+import AdminProfile from './pages/AdminProfile';
+import TrainerProfile from './pages/TrainerProfile';
+import CustomerProfile from './pages/CustomerProfile';
+import Customer from './pages/Customer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[] }> = ({ 
@@ -42,6 +46,24 @@ const PrivateRoute: React.FC<{ children: React.ReactNode; allowedRoles?: string[
   return <>{children}</>;
 };
 
+// Profile redirect component
+const ProfileRedirect: React.FC = () => {
+  const { user } = useAuth();
+  
+  if (!user) return <Navigate to="/" replace />;
+  
+  switch (user.role) {
+    case 'admin':
+      return <Navigate to="/admin/profile" replace />;
+    case 'trainer':
+      return <Navigate to="/trainer/profile" replace />;
+    case 'customer':
+      return <Navigate to="/customer/profile" replace />;
+    default:
+      return <Navigate to="/" replace />;
+  }
+};
+
 function App() {
   return (
     <Router>
@@ -72,6 +94,47 @@ function App() {
               element={
                 <PrivateRoute allowedRoles={['admin']}>
                   <Admin />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/admin/profile" 
+              element={
+                <PrivateRoute allowedRoles={['admin']}>
+                  <AdminProfile />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/trainer/profile" 
+              element={
+                <PrivateRoute allowedRoles={['trainer']}>
+                  <TrainerProfile />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/customer/profile" 
+              element={
+                <PrivateRoute allowedRoles={['customer']}>
+                  <CustomerProfile />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/my-meal-plans" 
+              element={
+                <PrivateRoute allowedRoles={['customer']}>
+                  <Customer />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/profile" 
+              element={
+                <PrivateRoute>
+                  {/* Redirect to role-specific profile */}
+                  <ProfileRedirect />
                 </PrivateRoute>
               } 
             />

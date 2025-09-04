@@ -11,6 +11,7 @@ import { useToast } from '../hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { apiRequest } from '../lib/queryClient';
 import ProfileImageUpload from '../components/ProfileImageUpload';
+import { ResponsiveHeader } from '../components/ResponsiveHeader';
 import { 
   User, 
   Heart, 
@@ -23,7 +24,11 @@ import {
   Scale,
   ChefHat,
   Activity,
-  Clock
+  Clock,
+  UserCheck,
+  Mail,
+  Award,
+  Phone
 } from 'lucide-react';
 
 interface CustomerStats {
@@ -32,6 +37,16 @@ interface CustomerStats {
   completedProtocols: number;
   protocolProgress: number;
   currentStreak: number;
+}
+
+interface TrainerInfo {
+  id: string;
+  name: string;
+  email: string;
+  profileImage?: string;
+  specialization?: string;
+  experience?: number;
+  contactInfo?: string;
 }
 
 interface CustomerProfile {
@@ -49,6 +64,7 @@ interface CustomerProfile {
   age?: number;
   bio?: string;
   profilePicture?: string | null;
+  trainer?: TrainerInfo;
 }
 
 const activityLevels = [
@@ -108,7 +124,7 @@ export default function CustomerProfile() {
   const { data: profile, isLoading: profileLoading } = useQuery<CustomerProfile>({
     queryKey: ['customerProfile', 'details'],
     queryFn: async () => {
-      const res = await apiRequest('GET', '/api/profile');
+      const res = await apiRequest('GET', '/api/customer/profile');
       return res.json();
     },
     enabled: !!user
@@ -270,7 +286,9 @@ export default function CustomerProfile() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+    <div className="min-h-screen bg-gray-50">
+      <ResponsiveHeader title="Customer Profile" showAdminButton={false} />
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
       {/* Header */}
       <div className="mb-6 sm:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 mb-4">
@@ -278,7 +296,7 @@ export default function CustomerProfile() {
             <Heart className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 truncate">My Health Profile</h1>
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 truncate">My Health Profile</h2>
             <p className="text-sm sm:text-base text-slate-600">Manage your health journey and protocol preferences</p>
           </div>
         </div>
@@ -671,6 +689,79 @@ export default function CustomerProfile() {
             </CardContent>
           </Card>
 
+          {/* Assigned Trainer */}
+          <Card>
+            <CardHeader className="pb-3 sm:pb-4">
+              <CardTitle className="flex items-center space-x-2 text-base sm:text-lg">
+                <UserCheck className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                <span>Your Trainer</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6">
+              {profile?.trainer ? (
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white">
+                      {profile.trainer.profileImage ? (
+                        <img
+                          src={profile.trainer.profileImage}
+                          alt={profile.trainer.name}
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-6 h-6" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{profile.trainer.name}</p>
+                      <p className="text-xs text-gray-500">{profile.trainer.specialization || 'Fitness Trainer'}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-center space-x-2">
+                      <Mail className="w-3 h-3 text-gray-400" />
+                      <span className="text-gray-600 truncate">{profile.trainer.email}</span>
+                    </div>
+                    {profile.trainer.experience && (
+                      <div className="flex items-center space-x-2">
+                        <Award className="w-3 h-3 text-gray-400" />
+                        <span className="text-gray-600">{profile.trainer.experience} years experience</span>
+                      </div>
+                    )}
+                    {profile.trainer.contactInfo && (
+                      <div className="flex items-center space-x-2">
+                        <Phone className="w-3 h-3 text-gray-400" />
+                        <span className="text-gray-600">{profile.trainer.contactInfo}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-3"
+                    onClick={() => {
+                      toast({
+                        title: "Contact Trainer",
+                        description: "Messaging feature coming soon!",
+                      });
+                    }}
+                  >
+                    <Mail className="w-3 h-3 mr-2" />
+                    Message Trainer
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-4 text-slate-500">
+                  <UserCheck className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                  <p className="text-xs sm:text-sm">No trainer assigned yet</p>
+                  <p className="text-xs text-slate-400">You'll be matched with a trainer soon!</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Health Metrics */}
           {(profile?.weight || profile?.height) && (
             <Card>
@@ -829,6 +920,7 @@ export default function CustomerProfile() {
               </CardContent>
             </Card>
           )}
+        </div>
         </div>
       </div>
     </div>

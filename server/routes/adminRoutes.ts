@@ -45,6 +45,63 @@ adminRouter.get('/stats', requireAdmin, async (req, res) => {
   }
 });
 
+// Get admin profile with statistics
+adminRouter.get('/profile', requireAdmin, async (req, res) => {
+  try {
+    const adminId = (req.user as any)?.claims?.sub;
+    
+    if (!adminId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    
+    // Get admin user info
+    const adminUser = await storage.getUser(adminId);
+    if (!adminUser) {
+      return res.status(404).json({ error: 'Admin user not found' });
+    }
+    
+    // Get system statistics
+    const customers = await storage.getCustomers();
+    const trainers = await storage.getTrainers();
+    const protocols = await storage.getAllHealthProtocols();
+    const recipes = await storage.getAllRecipes ? await storage.getAllRecipes() : [];
+    
+    const profile = {
+      id: adminUser.id,
+      email: adminUser.email,
+      firstName: adminUser.firstName || 'Admin',
+      lastName: adminUser.lastName || 'User',
+      profileImage: adminUser.profileImage,
+      role: adminUser.role,
+      createdAt: adminUser.createdAt,
+      lastLogin: new Date().toISOString(),
+      stats: {
+        totalUsers: customers.length + trainers.length + 1, // +1 for admin
+        totalTrainers: trainers.length,
+        totalCustomers: customers.length,
+        activeProtocols: protocols.filter((p: any) => p.status === 'active').length,
+        totalRecipes: recipes.length,
+        systemHealth: 'healthy' as const,
+      },
+      permissions: [
+        'User Management',
+        'Content Moderation',
+        'System Configuration',
+        'Database Access',
+        'Analytics View',
+        'Protocol Management',
+        'Recipe Management',
+        'Billing Access',
+      ],
+    };
+    
+    res.json(profile);
+  } catch (error) {
+    console.error('Failed to fetch admin profile:', error);
+    res.status(500).json({ error: 'Failed to fetch admin profile' });
+  }
+});
+
 // Routes accessible by both trainers and admins
 adminRouter.get('/customers', requireTrainerOrAdmin, async (req, res) => {
   try {

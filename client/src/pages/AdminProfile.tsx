@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiRequest } from '../lib/queryClient';
 import PDFExportButton from '../components/PDFExportButton';
 import ProfileImageUpload from '../components/ProfileImageUpload';
+import { ResponsiveHeader } from '../components/ResponsiveHeader';
 import { 
   User, 
   Shield, 
@@ -214,7 +215,9 @@ export default function AdminProfile() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+    <div className="min-h-screen bg-gray-50">
+      <ResponsiveHeader title="Admin Profile" showAdminButton={false} />
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
       {/* Header */}
       <div className="mb-6 sm:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 mb-4">
@@ -222,8 +225,8 @@ export default function AdminProfile() {
             <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 truncate">Admin Profile</h1>
-            <p className="text-sm sm:text-base text-slate-600">System administrator dashboard and account settings</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 truncate">System Administrator</h2>
+            <p className="text-sm sm:text-base text-slate-600">Dashboard and account settings</p>
           </div>
         </div>
         <Badge variant="secondary" className="bg-red-100 text-red-700 border-red-200 text-xs sm:text-sm">
@@ -624,6 +627,7 @@ export default function AdminProfile() {
               </CardContent>
             </Card>
           )}
+        </div>
         </div>
       </div>
     </div>

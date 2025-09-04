@@ -11,6 +11,7 @@ import { useToast } from '../hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { apiRequest } from '../lib/queryClient';
 import PDFExportButton from '../components/PDFExportButton';
+import { ResponsiveHeader } from '../components/ResponsiveHeader';
 import { 
   User, 
   Dumbbell, 
@@ -360,7 +361,9 @@ export default function TrainerProfile() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+    <div className="min-h-screen bg-gray-50">
+      <ResponsiveHeader title="Trainer Profile" showAdminButton={false} />
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
       {/* Header */}
       <div className="mb-6 sm:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 mb-4">
@@ -368,7 +371,7 @@ export default function TrainerProfile() {
             <Dumbbell className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 truncate">Trainer Profile</h1>
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 truncate">My Profile</h2>
           </div>
         </div>
       </div>
@@ -924,6 +927,7 @@ export default function TrainerProfile() {
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }

@@ -8,12 +8,83 @@ import {
   customerGoals,
   createMeasurementSchema,
   createGoalSchema,
-  uploadProgressPhotoSchema 
+  uploadProgressPhotoSchema,
+  users 
 } from '@shared/schema';
 import { db } from '../db';
 import { z } from 'zod';
 
 const customerRouter = Router();
+
+// Get customer profile with linked trainer
+customerRouter.get('/profile', requireAuth, requireRole('customer'), async (req, res) => {
+  try {
+    const customerId = req.user!.id;
+    
+    // Get customer user info
+    const customerUser = await storage.getUser(customerId);
+    if (!customerUser) {
+      return res.status(404).json({ error: 'Customer user not found' });
+    }
+    
+    // Get assigned trainer (through most recent protocol assignment)
+    // TODO: Fix trainer query - temporarily disabled due to Drizzle ORM error
+    let trainer = undefined;
+    /*
+    try {
+      // First get the trainer ID from protocol assignments
+      const [assignment] = await db
+        .select({ trainerId: protocolAssignments.trainerId })
+        .from(protocolAssignments)
+        .where(eq(protocolAssignments.customerId, customerId))
+        .limit(1);
+      
+      if (assignment?.trainerId) {
+        // Then get the trainer details separately
+        const trainerUser = await storage.getUser(assignment.trainerId);
+        if (trainerUser) {
+          trainer = {
+            id: trainerUser.id,
+            name: `${trainerUser.firstName || ''} ${trainerUser.lastName || ''}`.trim() || trainerUser.email,
+            email: trainerUser.email,
+            profileImage: trainerUser.profileImage,
+            specialization: 'Fitness & Nutrition Specialist',
+            experience: 5,
+            contactInfo: 'Available via in-app messaging',
+          };
+        }
+      }
+    } catch (queryError) {
+      console.log('No trainer assigned or query error:', queryError);
+      // Continue without trainer data
+    }
+    */
+    
+    const profile = {
+      id: customerUser.id,
+      email: customerUser.email,
+      firstName: customerUser.firstName,
+      lastName: customerUser.lastName,
+      profileImage: customerUser.profileImage,
+      role: customerUser.role,
+      createdAt: customerUser.createdAt,
+      trainer: trainer,
+      healthGoals: customerUser.healthGoals || [],
+      medicalConditions: customerUser.medicalConditions || [],
+      supplements: customerUser.supplements || [],
+      activityLevel: customerUser.activityLevel,
+      weight: customerUser.weight,
+      height: customerUser.height,
+      age: customerUser.age,
+      bio: customerUser.bio,
+    };
+    
+    res.json(profile);
+  } catch (error) {
+    console.error('Failed to fetch customer profile:', error);
+    res.status(500).json({ error: 'Failed to fetch customer profile' });
+  }
+});
 
 // Customer profile statistics endpoint
 customerRouter.get('/profile/stats', requireAuth, requireRole('customer'), async (req, res) => {

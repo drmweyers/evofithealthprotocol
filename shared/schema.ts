@@ -673,3 +673,142 @@ export const protocolEffectivenessUpdateSchema = z.object({
 export type CreateProtocolTemplate = z.infer<typeof createProtocolTemplateSchema>;
 export type MedicalSafetyValidationRequest = z.infer<typeof medicalSafetyValidationSchema>;
 export type ProtocolEffectivenessUpdate = z.infer<typeof protocolEffectivenessUpdateSchema>;
+
+/**
+ * Protocol Plans Table
+ * 
+ * Stores saved protocol configurations that trainers can reuse
+ * to create multiple protocols for different customers.
+ */
+export const protocolPlans = pgTable("protocol_plans", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  trainerId: uuid("trainer_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  planName: varchar("plan_name", { length: 255 }).notNull(),
+  planDescription: text("plan_description"),
+  
+  // Complete wizard configuration stored as JSONB
+  wizardConfiguration: jsonb("wizard_configuration").notNull().$type<{
+    protocolType: string;
+    selectedTemplate?: any;
+    useTemplate: boolean;
+    name: string;
+    description: string;
+    duration: number;
+    intensity: string;
+    category: string;
+    targetAudience: string[];
+    healthFocus: string[];
+    experienceLevel: string;
+    personalizations: {
+      ageRange?: { min: number; max: number };
+      healthConditions?: string[];
+      dietaryRestrictions?: string[];
+      culturalPreferences?: string[];
+      specificGoals?: string[];
+    };
+    safetyValidation: {
+      requiresHealthcareApproval: boolean;
+      contraindications: string[];
+      drugInteractions: string[];
+      pregnancySafe: boolean;
+      intensityWarnings: string[];
+    };
+    advancedOptions: {
+      enableVersioning: boolean;
+      enableEffectivenessTracking: boolean;
+      allowCustomerModifications: boolean;
+      includeProgressMilestones: boolean;
+    };
+  }>(),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  lastUsedAt: timestamp("last_used_at"),
+  usageCount: integer("usage_count").default(0),
+}, (table) => ({
+  // Composite unique constraint - each trainer can only have one plan with same name
+  trainerIdIdx: index("protocol_plans_trainer_id_idx").on(table.trainerId),
+  createdAtIdx: index("protocol_plans_created_at_idx").on(table.createdAt),
+  planNameIdx: index("protocol_plans_plan_name_idx").on(table.planName),
+}));
+
+/**
+ * Protocol Plan Assignments Table
+ * 
+ * Tracks when protocol plans are used to create actual protocols.
+ * Links plans to the protocols generated from them.
+ */
+export const protocolPlanAssignments = pgTable("protocol_plan_assignments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  protocolPlanId: uuid("protocol_plan_id")
+    .references(() => protocolPlans.id, { onDelete: "cascade" })
+    .notNull(),
+  protocolId: uuid("protocol_id")
+    .references(() => trainerHealthProtocols.id, { onDelete: "cascade" })
+    .notNull(),
+  customerId: uuid("customer_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  assignedBy: uuid("assigned_by")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  assignedAt: timestamp("assigned_at").defaultNow(),
+}, (table) => ({
+  planIdIdx: index("protocol_plan_assignments_plan_id_idx").on(table.protocolPlanId),
+  customerIdIdx: index("protocol_plan_assignments_customer_id_idx").on(table.customerId),
+}));
+
+// Type exports for protocol plans
+export type ProtocolPlan = typeof protocolPlans.$inferSelect;
+export type InsertProtocolPlan = typeof protocolPlans.$inferInsert;
+export type ProtocolPlanAssignment = typeof protocolPlanAssignments.$inferSelect;
+export type InsertProtocolPlanAssignment = typeof protocolPlanAssignments.$inferInsert;
+
+// Validation schemas for protocol plans
+export const createProtocolPlanSchema = z.object({
+  planName: z.string().min(1).max(255),
+  planDescription: z.string().optional(),
+  wizardConfiguration: z.object({
+    protocolType: z.enum(["longevity", "parasite_cleanse", "ailments_based", "general"]),
+    selectedTemplate: z.any().optional(),
+    useTemplate: z.boolean(),
+    name: z.string().min(1),
+    description: z.string(),
+    duration: z.number().min(7).max(365),
+    intensity: z.enum(["gentle", "moderate", "intensive"]),
+    category: z.string(),
+    targetAudience: z.array(z.string()),
+    healthFocus: z.array(z.string()),
+    experienceLevel: z.enum(["beginner", "intermediate", "advanced"]),
+    personalizations: z.object({
+      ageRange: z.object({ min: z.number(), max: z.number() }).optional(),
+      healthConditions: z.array(z.string()).optional(),
+      dietaryRestrictions: z.array(z.string()).optional(),
+      culturalPreferences: z.array(z.string()).optional(),
+      specificGoals: z.array(z.string()).optional(),
+    }),
+    safetyValidation: z.object({
+      requiresHealthcareApproval: z.boolean(),
+      contraindications: z.array(z.string()),
+      drugInteractions: z.array(z.string()),
+      pregnancySafe: z.boolean(),
+      intensityWarnings: z.array(z.string()),
+    }),
+    advancedOptions: z.object({
+      enableVersioning: z.boolean(),
+      enableEffectivenessTracking: z.boolean(),
+      allowCustomerModifications: z.boolean(),
+      includeProgressMilestones: z.boolean(),
+    }),
+  }),
+});
+
+export const assignProtocolPlanSchema = z.object({
+  customerId: z.string().uuid(),
+});
+
+export type CreateProtocolPlanInput = z.infer<typeof createProtocolPlanSchema>;
+export type AssignProtocolPlanInput = z.infer<typeof assignProtocolPlanSchema>;

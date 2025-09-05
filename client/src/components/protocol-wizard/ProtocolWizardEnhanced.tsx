@@ -37,6 +37,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '../ui/dialog';
+import SaveOptionsStep from './SaveOptionsStep';
 import {
   ArrowLeft,
   ArrowRight,
@@ -68,6 +69,7 @@ import {
   History,
 } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
+import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
 import { 
   sanitizeProtocolName, 
@@ -136,15 +138,33 @@ interface WizardData {
   notes?: string;
 }
 
-const WIZARD_STEPS = [
-  { id: 1, title: 'Client Selection', icon: User },
-  { id: 2, title: 'Template Selection', icon: BookOpen },
-  { id: 3, title: 'Health Information', icon: Heart },
-  { id: 4, title: 'Customization', icon: Zap },
-  { id: 5, title: 'AI Generation', icon: Sparkles },
-  { id: 6, title: 'Safety Validation', icon: ShieldCheck },
-  { id: 7, title: 'Review & Finalize', icon: CheckCircle },
-];
+// Dynamic wizard steps based on user role - Admin users skip client selection
+const getWizardSteps = (userRole: string | undefined) => {
+  // Admin workflow: No client selection step, start with template selection
+  if (userRole === 'admin') {
+    return [
+      { id: 1, title: 'Template Selection', icon: BookOpen },
+      { id: 2, title: 'Health Information', icon: Heart },
+      { id: 3, title: 'Customization', icon: Zap },
+      { id: 4, title: 'AI Generation', icon: Sparkles },
+      { id: 5, title: 'Safety Validation', icon: ShieldCheck },
+      { id: 6, title: 'Review & Finalize', icon: CheckCircle },
+      { id: 7, title: 'Save Options', icon: User },
+    ];
+  }
+  
+  // Trainer workflow: Client selection first, then protocol creation
+  return [
+    { id: 1, title: 'Client Selection', icon: User },
+    { id: 2, title: 'Template Selection', icon: BookOpen },
+    { id: 3, title: 'Health Information', icon: Heart },
+    { id: 4, title: 'Customization', icon: Zap },
+    { id: 5, title: 'AI Generation', icon: Sparkles },
+    { id: 6, title: 'Safety Validation', icon: ShieldCheck },
+    { id: 7, title: 'Review & Finalize', icon: CheckCircle },
+    { id: 8, title: 'Save Options', icon: User },
+  ];
+};
 
 interface ProtocolWizardEnhancedProps {
   onComplete?: (protocolData: any) => void;
@@ -158,6 +178,12 @@ export default function ProtocolWizardEnhanced({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
+  
+  // Get dynamic wizard steps based on user role
+  const WIZARD_STEPS = getWizardSteps(user?.role);
+  const isAdmin = user?.role === 'admin';
+  const startingStep = 1; // Everyone starts at 1 (Template Selection)
   
   const [wizardData, setWizardData] = useState<WizardData>({
     step: 1,
@@ -178,7 +204,7 @@ export default function ProtocolWizardEnhanced({
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [formErrors, setFormErrors] = useState<any>({});
   
-  // Fetch clients
+  // Fetch clients - Available for assignment in save options step
   const { data: clients, isLoading: loadingClients } = useQuery({
     queryKey: ['trainer-clients'],
     queryFn: async () => {
@@ -189,6 +215,7 @@ export default function ProtocolWizardEnhanced({
       const data = await response.json();
       return data || [];
     },
+    enabled: user?.role === 'trainer', // Enable for trainers to have customers available for assignment
   });
   
   // Fetch protocol templates
@@ -207,7 +234,9 @@ export default function ProtocolWizardEnhanced({
   // Create protocol mutation
   const createProtocolMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch('/api/trainer/protocols', {
+      // Use admin endpoint for admin users, trainer endpoint for trainers
+      const endpoint = isAdmin ? '/api/admin/protocols' : '/api/trainer/protocols';
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -219,13 +248,66 @@ export default function ProtocolWizardEnhanced({
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['trainer-protocols'] });
+      // Invalidate appropriate queries based on user role
+      if (isAdmin) {
+        queryClient.invalidateQueries({ queryKey: ['/api/admin/protocols'] });
+        queryClient.invalidateQueries({ queryKey: ['admin-protocols'] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['trainer-protocols'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/trainer/protocols'] });
+      }
+      
       toast({
         title: 'Success!',
-        description: 'Protocol created successfully.',
+        description: isAdmin 
+          ? 'Your protocol template has been created and saved to the database.'
+          : 'Protocol created successfully.',
       });
       if (onComplete) {
         onComplete(data);
+      } else {
+        navigate('/protocols');
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to create protocol. Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Assign protocol to customer mutation
+  const assignProtocolMutation = useMutation({
+    mutationFn: async ({ customerId, protocolData }: { customerId: string; protocolData: any }) => {
+      const response = await fetch('/api/trainer/protocol-assignments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          customerId,
+          protocol: protocolData,
+          templateId: wizardData.template?.id,
+          customizations: wizardData.customizations,
+          safetyValidation: wizardData.safetyValidation,
+          notes: wizardData.notes,
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to assign protocol');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trainer-protocols'] });
+      queryClient.invalidateQueries({ queryKey: ['trainer-customers'] });
+      toast({
+        title: 'Success!',
+        description: 'Protocol has been assigned to the customer.',
+      });
+      if (onComplete) {
+        onComplete(wizardData.protocol);
       } else {
         navigate('/trainer/protocols');
       }
@@ -233,7 +315,52 @@ export default function ProtocolWizardEnhanced({
     onError: (error) => {
       toast({
         title: 'Error',
-        description: 'Failed to create protocol. Please try again.',
+        description: 'Failed to assign protocol to customer.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Save as template mutation
+  const saveTemplateMutation = useMutation({
+    mutationFn: async ({ title, description }: { title: string; description: string }) => {
+      const response = await fetch('/api/protocol-templates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: title,
+          description,
+          category: wizardData.template?.category || 'Custom',
+          content: wizardData.protocol,
+          tags: wizardData.customizations.goals || [],
+          isCustomTemplate: true,
+          originalTemplateId: wizardData.template?.id,
+          customizations: wizardData.customizations,
+          safetyValidation: wizardData.safetyValidation,
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to save template');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['protocol-templates'] });
+      toast({
+        title: 'Success!',
+        description: 'Protocol has been saved as a template.',
+      });
+      if (onComplete) {
+        onComplete(wizardData.protocol);
+      } else {
+        navigate('/protocols');
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to save protocol as template.',
         variant: 'destructive',
       });
     },
@@ -282,52 +409,93 @@ export default function ProtocolWizardEnhanced({
     // Validate current step before proceeding
     const validationErrors: any = {};
     
-    // Step 1: Client selection validation
-    if (wizardData.step === 1 && !wizardData.client) {
-      toast({
-        title: 'Selection Required',
-        description: 'Please select a client before proceeding.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    // Step 2: Template selection validation
-    if (wizardData.step === 2 && !wizardData.template) {
-      toast({
-        title: 'Selection Required',
-        description: 'Please select a protocol template before proceeding.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    // Step 3: Health information validation
-    if (wizardData.step === 3) {
-      if (wizardData.customizations.conditions.length === 0 && 
-          wizardData.customizations.medications.length === 0) {
+    if (isAdmin) {
+      // Admin validation logic (7 steps)
+      // Step 1: Template selection validation
+      if (wizardData.step === 1 && !wizardData.template) {
         toast({
-          title: 'Information Required',
-          description: 'Please provide at least some health information.',
+          title: 'Selection Required',
+          description: 'Please select a protocol template before proceeding.',
           variant: 'destructive',
         });
         return;
       }
-    }
-    
-    // Step 4: Customization validation
-    if (wizardData.step === 4) {
-      if (wizardData.customizations.goals.length === 0) {
+      
+      // Step 2: Health information validation
+      if (wizardData.step === 2) {
+        if (wizardData.customizations.conditions.length === 0 && 
+            wizardData.customizations.medications.length === 0) {
+          toast({
+            title: 'Information Required',
+            description: 'Please provide at least some health information.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+      
+      // Step 3: Customization validation
+      if (wizardData.step === 3) {
+        if (wizardData.customizations.goals.length === 0) {
+          toast({
+            title: 'Goals Required',
+            description: 'Please select at least one health goal.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+    } else {
+      // Trainer validation logic (8 steps)
+      // Step 1: Client selection validation
+      if (wizardData.step === 1 && !wizardData.client) {
         toast({
-          title: 'Goals Required',
-          description: 'Please select at least one health goal.',
+          title: 'Client Required',
+          description: 'Please select a client before proceeding.',
           variant: 'destructive',
         });
         return;
       }
+      
+      // Step 2: Template selection validation  
+      if (wizardData.step === 2 && !wizardData.template) {
+        toast({
+          title: 'Selection Required',
+          description: 'Please select a protocol template before proceeding.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // Step 3: Health information validation
+      if (wizardData.step === 3) {
+        if (wizardData.customizations.conditions.length === 0 && 
+            wizardData.customizations.medications.length === 0) {
+          toast({
+            title: 'Information Required',
+            description: 'Please provide at least some health information.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+      
+      // Step 4: Customization validation
+      if (wizardData.step === 4) {
+        if (wizardData.customizations.goals.length === 0) {
+          toast({
+            title: 'Goals Required',
+            description: 'Please select at least one health goal.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
     }
     
-    if (wizardData.step === 5) {
+    // AI generation step (admin step 4, trainer step 5)
+    const aiGenerationStep = isAdmin ? 4 : 5;
+    if (wizardData.step === aiGenerationStep) {
       // Generate AI protocol
       setIsGenerating(true);
       try {
@@ -356,8 +524,13 @@ export default function ProtocolWizardEnhanced({
       } finally {
         setIsGenerating(false);
       }
-    } else if (wizardData.step === 6) {
-      // Validate safety
+      return;
+    }
+    
+    // Safety validation step (admin step 5, trainer step 6)  
+    const safetyValidationStep = isAdmin ? 5 : 6;
+    if (wizardData.step === safetyValidationStep) {
+      // Safety validation step
       const validation = await validateSafetyMutation.mutateAsync({
         protocol: wizardData.protocol,
         conditions: wizardData.customizations.conditions,
@@ -369,8 +542,32 @@ export default function ProtocolWizardEnhanced({
         safetyValidation: validation.data,
         step: prev.step + 1,
       }));
-    } else if (wizardData.step < 7) {
+    } else if (wizardData.step < WIZARD_STEPS.length) {
       setWizardData(prev => ({ ...prev, step: prev.step + 1 }));
+    }
+  };
+
+  // Save Options Handlers
+  const handleAssignToCustomer = async (customerId: string) => {
+    await assignProtocolMutation.mutateAsync({
+      customerId,
+      protocolData: wizardData.protocol,
+    });
+  };
+
+  const handleSaveAsTemplate = async (title: string, description: string) => {
+    await saveTemplateMutation.mutateAsync({ title, description });
+  };
+
+  const handleFinishWithoutSaving = () => {
+    toast({
+      title: 'Protocol Complete',
+      description: 'Your protocol has been generated successfully.',
+    });
+    if (onComplete) {
+      onComplete(wizardData.protocol);
+    } else {
+      navigate('/protocols');
     }
   };
   
@@ -380,34 +577,6 @@ export default function ProtocolWizardEnhanced({
     }
   };
   
-  const handleFinalize = async () => {
-    // Sanitize all data before saving
-    const sanitizedData = sanitizeProtocolFormData({
-      name: `${wizardData.template?.name} - ${wizardData.client?.name}`,
-      notes: wizardData.notes,
-      ...wizardData.customizations,
-    });
-    
-    await createProtocolMutation.mutateAsync({
-      name: sanitizedData.name,
-      templateId: wizardData.template?.id,
-      clientId: wizardData.client?.id,
-      content: wizardData.protocol,
-      customizations: {
-        goals: sanitizedData.goals,
-        conditions: sanitizedData.conditions,
-        medications: sanitizedData.medications,
-        allergies: sanitizedData.allergies,
-        preferences: wizardData.customizations.preferences,
-        intensity: wizardData.customizations.intensity,
-        duration: wizardData.customizations.duration,
-        frequency: wizardData.customizations.frequency,
-      },
-      safetyValidation: wizardData.safetyValidation,
-      notes: sanitizedData.notes,
-      generateWithAI: wizardData.aiGenerated,
-    });
-  };
   
   const handleCancel = () => {
     if (onCancel) {
@@ -418,10 +587,76 @@ export default function ProtocolWizardEnhanced({
   };
   
   const renderStepContent = () => {
+    // Debug logging for step rendering
+    console.log('🔍 renderStepContent - Debug:', {
+      isAdmin,
+      userRole: user?.role,
+      currentStep: wizardData.step,
+      stepPath: isAdmin ? 'admin' : 'trainer'
+    });
+    
+    // For admin users: 7-step workflow without client selection
+    if (isAdmin) {
+      switch (wizardData.step) {
+        case 1:
+          return <TemplateSelectionStep 
+            templates={templates || []}
+            selected={wizardData.template}
+            onSelect={(template) => setWizardData(prev => ({ ...prev, template }))}
+          />;
+        
+        case 2:
+          return <HealthInformationStep 
+            data={wizardData.customizations}
+            onChange={(customizations: any) => setWizardData(prev => ({ ...prev, customizations }))}
+          />;
+        
+        case 3:
+          return <CustomizationStep 
+            data={wizardData.customizations}
+            onChange={(customizations: any) => setWizardData(prev => ({ ...prev, customizations }))}
+          />;
+        
+        case 4:
+          return <AIGenerationStep 
+            isGenerating={isGenerating}
+            template={wizardData.template}
+            customizations={wizardData.customizations}
+          />;
+        
+        case 5:
+          return <SafetyValidationStep 
+            validation={wizardData.safetyValidation}
+            protocol={wizardData.protocol}
+          />;
+        
+        case 6:
+          return <ReviewFinalizeStep 
+            wizardData={wizardData}
+            onNotesChange={(notes: string) => setWizardData(prev => ({ ...prev, notes }))}
+          />;
+        
+        case 7:
+          return <SaveOptionsStep 
+            generatedProtocol={wizardData.protocol}
+            availableCustomers={clients || []}
+            onAssignToCustomer={handleAssignToCustomer}
+            onSaveAsTemplate={handleSaveAsTemplate}
+            onFinish={handleFinishWithoutSaving}
+            userRole={user?.role as 'admin' | 'trainer'}
+            isLoading={assignProtocolMutation.isPending || saveTemplateMutation.isPending}
+          />;
+        
+        default:
+          return null;
+      }
+    }
+    
+    // For trainer users: 8-step workflow with client selection first
     switch (wizardData.step) {
       case 1:
         return <ClientSelectionStep 
-          clients={clients || []} 
+          clients={clients || []}
           selected={wizardData.client}
           onSelect={(client) => setWizardData(prev => ({ ...prev, client }))}
         />;
@@ -462,6 +697,17 @@ export default function ProtocolWizardEnhanced({
         return <ReviewFinalizeStep 
           wizardData={wizardData}
           onNotesChange={(notes) => setWizardData(prev => ({ ...prev, notes }))}
+        />;
+      
+      case 8:
+        return <SaveOptionsStep 
+          generatedProtocol={wizardData.protocol}
+          availableCustomers={clients || []}
+          onAssignToCustomer={handleAssignToCustomer}
+          onSaveAsTemplate={handleSaveAsTemplate}
+          onFinish={handleFinishWithoutSaving}
+          userRole={user?.role as 'admin' | 'trainer'}
+          isLoading={assignProtocolMutation.isPending || saveTemplateMutation.isPending}
         />;
       
       default:
@@ -507,7 +753,7 @@ export default function ProtocolWizardEnhanced({
             );
           })}
         </div>
-        <Progress value={(wizardData.step / 7) * 100} className="h-2" />
+        <Progress value={(wizardData.step / WIZARD_STEPS.length) * 100} className="h-2" />
       </div>
       
       {/* Step Title */}
@@ -546,29 +792,18 @@ export default function ProtocolWizardEnhanced({
             </Button>
           </div>
           
-          {wizardData.step === 7 ? (
-            <Button
-              onClick={handleFinalize}
-              disabled={createProtocolMutation.isPending}
-            >
-              {createProtocolMutation.isPending ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4 mr-2" />
-                  Create Protocol
-                </>
-              )}
-            </Button>
+          {wizardData.step === WIZARD_STEPS.length ? (
+            // On the save options step, don't show a next/create button - the SaveOptionsStep handles its own actions
+            <div className="text-sm text-muted-foreground">
+              Choose an option above to proceed
+            </div>
           ) : (
             <Button
               onClick={handleNext}
               disabled={
-                (wizardData.step === 1 && !wizardData.client) ||
-                (wizardData.step === 2 && !wizardData.template) ||
+                (isAdmin && wizardData.step === 1 && !wizardData.template) ||
+                (!isAdmin && wizardData.step === 1 && !wizardData.client) ||
+                (!isAdmin && wizardData.step === 2 && !wizardData.template) ||
                 isGenerating
               }
             >
@@ -1212,7 +1447,7 @@ function ReviewFinalizeStep({ wizardData, onNotesChange }: any) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label className="text-muted-foreground">Client</Label>
-              <p className="font-medium">{wizardData.client?.name}</p>
+              <p className="font-medium">{wizardData.client?.name || 'Not assigned'}</p>
             </div>
             <div>
               <Label className="text-muted-foreground">Template</Label>

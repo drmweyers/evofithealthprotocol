@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import TrainerHealthProtocols from './TrainerHealthProtocols';
-import { FileText, Shield } from 'lucide-react';
+import { FileText, Shield, Plus } from 'lucide-react';
 import { ResponsiveHeader } from './ResponsiveHeader';
+import { Button } from './ui/button';
 
 const HealthProtocolDashboard: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('protocols');
+  const [shouldOpenWizard, setShouldOpenWizard] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -15,6 +17,24 @@ const HealthProtocolDashboard: React.FC = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header Actions */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Health Protocol Management</h1>
+            <p className="text-gray-600 mt-1">Create and manage specialized health protocols</p>
+          </div>
+          <Button
+            onClick={() => {
+              setActiveTab('protocols');
+              setShouldOpenWizard(true);
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Open Protocol Wizard
+          </Button>
+        </div>
+
         {/* Tab Navigation */}
         <div className="flex space-x-1 mb-8 bg-gray-100 p-1 rounded-lg max-w-md">
           <button
@@ -43,7 +63,10 @@ const HealthProtocolDashboard: React.FC = () => {
         {/* Content Area */}
         <div className="bg-white rounded-lg shadow">
           {activeTab === 'protocols' ? (
-            <TrainerHealthProtocols />
+            <TrainerHealthProtocols 
+              shouldOpenWizard={shouldOpenWizard}
+              onWizardOpened={() => setShouldOpenWizard(false)}
+            />
           ) : (
             <div className="p-8 text-center text-gray-500">
               <Shield className="h-12 w-12 mx-auto mb-4 text-gray-300" />

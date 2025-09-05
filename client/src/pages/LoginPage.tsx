@@ -54,7 +54,7 @@ const LoginPage = () => {
       // Navigate based on role
       switch (user.role) {
         case 'admin':
-          navigate('/admin');
+          navigate('/protocols'); // Admin goes to protocols page to access enhanced wizard
           break;
         case 'trainer':
           navigate('/trainer');

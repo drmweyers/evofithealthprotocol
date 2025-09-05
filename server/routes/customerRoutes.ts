@@ -28,37 +28,39 @@ customerRouter.get('/profile', requireAuth, requireRole('customer'), async (req,
     }
     
     // Get assigned trainer (through most recent protocol assignment)
-    // TODO: Fix trainer query - temporarily disabled due to Drizzle ORM error
     let trainer = undefined;
-    /*
+    
     try {
-      // First get the trainer ID from protocol assignments
-      const [assignment] = await db
-        .select({ trainerId: protocolAssignments.trainerId })
+      // Query for trainer through protocol assignments with proper join
+      const result = await db
+        .select({
+          trainerId: protocolAssignments.trainerId,
+          trainerEmail: users.email,
+          trainerName: users.name,
+          trainerProfilePicture: users.profilePicture,
+        })
         .from(protocolAssignments)
+        .innerJoin(users, eq(protocolAssignments.trainerId, users.id))
         .where(eq(protocolAssignments.customerId, customerId))
+        .orderBy(sql`${protocolAssignments.assignedAt} DESC`)
         .limit(1);
       
-      if (assignment?.trainerId) {
-        // Then get the trainer details separately
-        const trainerUser = await storage.getUser(assignment.trainerId);
-        if (trainerUser) {
-          trainer = {
-            id: trainerUser.id,
-            name: `${trainerUser.firstName || ''} ${trainerUser.lastName || ''}`.trim() || trainerUser.email,
-            email: trainerUser.email,
-            profileImage: trainerUser.profileImage,
-            specialization: 'Fitness & Nutrition Specialist',
-            experience: 5,
-            contactInfo: 'Available via in-app messaging',
-          };
-        }
+      if (result.length > 0 && result[0].trainerId) {
+        const trainerData = result[0];
+        trainer = {
+          id: trainerData.trainerId,
+          name: trainerData.trainerName || trainerData.trainerEmail.split('@')[0],
+          email: trainerData.trainerEmail,
+          profileImage: trainerData.trainerProfilePicture,
+          specialization: 'Health Protocol Specialist',
+          experience: 5,
+          contactInfo: 'Available via in-app messaging',
+        };
       }
     } catch (queryError) {
-      console.log('No trainer assigned or query error:', queryError);
-      // Continue without trainer data
+      console.error('Error fetching trainer for customer:', queryError);
+      // Continue without trainer data - customer might not have a trainer yet
     }
-    */
     
     const profile = {
       id: customerUser.id,
@@ -66,6 +68,7 @@ customerRouter.get('/profile', requireAuth, requireRole('customer'), async (req,
       firstName: customerUser.firstName,
       lastName: customerUser.lastName,
       profileImage: customerUser.profileImage,
+      profilePicture: customerUser.profilePicture, // Include both for compatibility
       role: customerUser.role,
       createdAt: customerUser.createdAt,
       trainer: trainer,

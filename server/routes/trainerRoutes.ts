@@ -396,7 +396,13 @@ trainerRouter.delete('/protocols/:id', requireAuth, requireRole('trainer'), asyn
 trainerRouter.post('/protocols/:id/assign', requireAuth, requireRole('trainer'), async (req, res) => {
   try {
     const { id: protocolId } = req.params;
-    const { clientIds, notes, startDate } = assignProtocolSchema.parse(req.body);
+    // Parse the body without protocolId since it comes from URL
+    const bodySchema = z.object({
+      clientIds: z.array(z.string().uuid()),
+      notes: z.string().optional(),
+      startDate: z.string().datetime().optional(),
+    });
+    const { clientIds, notes, startDate } = bodySchema.parse(req.body);
     const trainerId = req.user!.id;
     
     // Verify protocol ownership

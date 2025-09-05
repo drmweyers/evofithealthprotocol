@@ -311,7 +311,7 @@ const LoginPage = () => {
                 >
                   <h4 className="text-sm font-semibold text-amber-800 mb-2">Test Credentials:</h4>
                   <div className="text-xs text-amber-700 space-y-1">
-                    <p><strong>Admin:</strong> admin@fitmeal.pro / AdminPass123!</p>
+                    <p><strong>Admin:</strong> admin@fitmeal.pro / AdminPass123</p>
                     <p><strong>Trainer:</strong> trainer.test@evofitmeals.com / TestTrainer123!</p>
                     <p><strong>Customer:</strong> customer.test@evofitmeals.com / TestCustomer123!</p>
                   </div>

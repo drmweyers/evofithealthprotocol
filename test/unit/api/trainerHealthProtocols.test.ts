@@ -21,6 +21,9 @@ import {
   type User
 } from '@shared/schema';
 
+// Import comprehensive database mock utilities
+import { createDbQueryMock, createDbErrorMock, setupDbMocks } from '../../utils/mockDatabase';
+
 // Mock the database and auth modules first
 vi.mock('../../../server/db', () => ({ 
   db: {
@@ -119,20 +122,9 @@ describe('Trainer Health Protocols API', () => {
         }
       ];
 
-      // Setup mocks
-      mockDb.select.mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            orderBy: vi.fn().mockResolvedValue(mockProtocols)
-          })
-        })
-      });
-
-      // Mock the assignment query (called once per protocol)
-      mockDb.select.mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue(mockAssignments)
-        })
+      // Setup mocks using utility
+      setupDbMocks(mockDb, {
+        select: [mockProtocols, mockAssignments]
       });
 
       const response = await request(app)
@@ -154,12 +146,8 @@ describe('Trainer Health Protocols API', () => {
     });
 
     it('should return empty array when trainer has no protocols', async () => {
-      mockDb.select.mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            orderBy: vi.fn().mockResolvedValue([])
-          })
-        })
+      setupDbMocks(mockDb, {
+        select: [[]]
       });
 
       const response = await request(app)
@@ -170,13 +158,7 @@ describe('Trainer Health Protocols API', () => {
     });
 
     it('should handle database errors gracefully', async () => {
-      mockDb.select.mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            orderBy: vi.fn().mockRejectedValue(new Error('Database error'))
-          })
-        })
-      });
+      mockDb.select.mockReturnValue(createDbErrorMock(new Error('Database error')));
 
       const response = await request(app)
         .get('/api/trainer/health-protocols')

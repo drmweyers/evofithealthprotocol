@@ -145,7 +145,7 @@ describe('CustomerDetailView Component', () => {
   let queryClient: QueryClient;
   let mockOnBack: ReturnType<typeof vi.fn>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },

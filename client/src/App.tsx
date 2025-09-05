@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import LoginPage from './pages/LoginPage';
 import HealthProtocolDashboard from './components/HealthProtocolDashboard';
+import ProtocolPlansLibrary from './components/ProtocolPlansLibrary';
 import Admin from './pages/Admin';
 import Trainer from './pages/Trainer';
 import AdminProfile from './pages/AdminProfile';
@@ -78,6 +79,14 @@ function App() {
               element={
                 <PrivateRoute allowedRoles={['admin', 'trainer']}>
                   <HealthProtocolDashboard />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/protocol-plans" 
+              element={
+                <PrivateRoute allowedRoles={['admin', 'trainer']}>
+                  <ProtocolPlansLibrary />
                 </PrivateRoute>
               } 
             />

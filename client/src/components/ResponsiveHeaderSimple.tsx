@@ -42,10 +42,7 @@ export const ResponsiveHeaderSimple: React.FC<ResponsiveHeaderSimpleProps> = ({ 
     <nav className="bg-white shadow-sm border-b sticky top-0 z-40">
       <div style={{ display: 'block' }}>
         {/* Mobile Header - using inline styles for reliable rendering */}
-        <div style={{ 
-          display: 'block',
-          '@media (min-width: 768px)': { display: 'none' }
-        }} className="md:hidden">
+        <div className="md:hidden">
           <div className="px-4 py-3">
             <div className="flex items-center">
               {/* Mobile Navigation Menu Button */}
@@ -140,10 +137,7 @@ export const ResponsiveHeaderSimple: React.FC<ResponsiveHeaderSimpleProps> = ({ 
         </div>
 
         {/* Desktop Header */}
-        <div style={{ 
-          display: 'none',
-          '@media (min-width: 768px)': { display: 'block' }
-        }} className="hidden md:block">
+        <div className="hidden md:block">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16">
               <div className="flex items-center">

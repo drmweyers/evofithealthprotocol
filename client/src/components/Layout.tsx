@@ -165,7 +165,7 @@ const Layout = ({ children }: LayoutProps) => {
           <div className="lg:hidden border-t border-gray-200 bg-white shadow-lg">
             <div className="space-y-1 px-3 py-3 sm:px-4">
               {navigation.map((item) => {
-                const isActive = location === item.href;
+                const isActive = location.pathname === item.href;
                 return (
                   <a
                     key={item.name}

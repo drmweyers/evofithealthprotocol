@@ -20,12 +20,12 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@components': path.resolve(__dirname, './src/components'),
-      '@utils': path.resolve(__dirname, './src/utils'),
-      '@hooks': path.resolve(__dirname, './src/hooks'),
-      '@contexts': path.resolve(__dirname, './src/contexts'),
-      '@types': path.resolve(__dirname, './src/types')
+      '@': path.resolve(__dirname, './client/src'),
+      '@components': path.resolve(__dirname, './client/src/components'),
+      '@utils': path.resolve(__dirname, './client/src/utils'),
+      '@hooks': path.resolve(__dirname, './client/src/hooks'),
+      '@contexts': path.resolve(__dirname, './client/src/contexts'),
+      '@types': path.resolve(__dirname, './client/src/types')
     },
   },
   build: {

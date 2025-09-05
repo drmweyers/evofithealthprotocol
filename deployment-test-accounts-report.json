@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-09-05T01:33:02.462Z",
+  "environment": "development",
+  "url": "http://localhost:3501",
+  "accounts": [
+    {
+      "role": "admin",
+      "email": "admin@fitmeal.pro",
+      "status": "working"
+    },
+    {
+      "role": "trainer",
+      "email": "trainer.test@evofitmeals.com",
+      "status": "working"
+    },
+    {
+      "role": "customer",
+      "email": "customer.test@evofitmeals.com",
+      "status": "working"
+    }
+  ],
+  "success": true
+}

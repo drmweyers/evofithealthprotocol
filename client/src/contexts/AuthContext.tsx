@@ -115,9 +115,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 AuthContext Debug - authToken:', authToken ? 'EXISTS' : 'NULL');
+    console.log('🔍 AuthContext Debug - localStorage token:', localStorage.getItem('token') ? 'EXISTS' : 'NULL');
+  }, [authToken]);
+
+  // Additional sync check - ensure authToken stays in sync with localStorage
+  useEffect(() => {
+    const storageToken = localStorage.getItem('token');
+    if (storageToken !== authToken) {
+      console.log('🔧 AuthContext Fix - syncing authToken with localStorage');
+      setAuthToken(storageToken);
+    }
+  }, []);
+
   const { data: user, isLoading, error } = useQuery({
     queryKey: [`${API_BASE_URL}/auth/me`],
     queryFn: async () => {
+      const currentToken = authToken || localStorage.getItem('token');
+      console.log('🔍 useQuery Debug - Running auth/me query with token:', currentToken ? 'EXISTS' : 'NULL');
+      
+      if (!currentToken) {
+        throw new Error('No token available');
+      }
+      
       try {
         const makeRequest = async (token: string) => {
           const response = await fetch(`${API_BASE_URL}/auth/me`, {
@@ -137,7 +159,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         let response;
         try {
           // Try with current token
-          response = await makeRequest(authToken!);
+          response = await makeRequest(currentToken);
         } catch (error) {
           if (error instanceof Error && error.message.includes('401')) {
             // Try to refresh token
@@ -157,7 +179,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return normalized.user;
       } catch (error) {
         if (error instanceof Error && error.message.includes('Session expired')) {
-          await handleLogout();
+          console.log('⚠️ Session expired error detected, but not auto-redirecting to allow component handling');
+          // Don't automatically logout here - let individual components handle auth errors
+          // await handleLogout();
         }
         throw error;
       }
@@ -173,7 +197,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     },
     retryDelay: 1000,
     staleTime: 1000 * 60 * 5, // 5 minutes
-    enabled: !!authToken,
+    enabled: !!(authToken || localStorage.getItem('token')),
     throwOnError: false
   });
 

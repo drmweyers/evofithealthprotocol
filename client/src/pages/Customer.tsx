@@ -1,39 +1,65 @@
-import React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { useAuth } from "../contexts/AuthContext";
-import { ResponsiveHeader } from "../components/ResponsiveHeader";
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { useAuth } from '../contexts/AuthContext';
+import { ResponsiveHeader } from '../components/ResponsiveHeader';
+import ProgressTracking from '../components/ProgressTracking';
 import { 
-  Heart, 
+  Activity, 
+  Calendar, 
   Target, 
-  TrendingUp, 
-  Calendar,
-  ChefHat,
-  Dumbbell,
-  User,
-  FileText
+  TrendingUp,
+  FileText,
+  CheckCircle,
+  Clock,
+  User
 } from 'lucide-react';
 
-export default function Customer() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
+interface CustomerStats {
+  activeProtocols: number;
+  completedProtocols: number;
+  totalMeasurements: number;
+  weeklyProgress: number;
+}
 
-  const { data: customerData } = useQuery({
-    queryKey: ['customerDashboard'],
+interface HealthProtocol {
+  id: string;
+  name: string;
+  status: 'active' | 'completed' | 'paused';
+  assignedAt: string;
+  dueDate?: string;
+  progress: number;
+}
+
+const Customer: React.FC = () => {
+  const { user } = useAuth();
+
+  const { data: stats } = useQuery({
+    queryKey: ['customerStats'],
     queryFn: async () => {
-      const response = await fetch('/api/customer/dashboard', {
+      const response = await fetch('/api/customer/profile/stats', {
         credentials: 'include',
       });
-      if (!response.ok) throw new Error('Failed to fetch customer data');
-      return response.json();
+      if (!response.ok) throw new Error('Failed to fetch customer stats');
+      return response.json() as CustomerStats;
+    },
+  });
+
+  const { data: protocols } = useQuery({
+    queryKey: ['customerProtocols'],
+    queryFn: async () => {
+      const response = await fetch('/api/customer/protocols', {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch protocols');
+      return response.json() as HealthProtocol[];
     },
   });
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <ResponsiveHeader title="Customer Dashboard" showAdminButton={false} />
+      <ResponsiveHeader title="My Health Journey" showAdminButton={false} />
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         {/* Header Section */}
@@ -42,191 +68,139 @@ export default function Customer() {
             Welcome, {user?.email?.split('@')[0] || 'Customer'}
           </h1>
           <p className="text-sm sm:text-base text-slate-600">
-            Track your health journey and manage your fitness protocols.
+            Track your progress and follow your personalized health protocols.
           </p>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
-          <Card 
-            className="cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => navigate('/customer/profile')}
-          >
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">My Profile</p>
-                  <p className="text-lg font-bold text-slate-900">View & Edit</p>
-                </div>
-                <User className="h-8 w-8 text-blue-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">Health Protocols</p>
-                  <p className="text-lg font-bold text-green-600">
-                    {customerData?.activeProtocols || 0} Active
-                  </p>
-                </div>
-                <Heart className="h-8 w-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">Meal Plans</p>
-                  <p className="text-lg font-bold text-purple-600">
-                    {customerData?.mealPlans || 0} Plans
-                  </p>
-                </div>
-                <ChefHat className="h-8 w-8 text-purple-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">Progress</p>
-                  <p className="text-lg font-bold text-orange-600">Track</p>
-                </div>
-                <TrendingUp className="h-8 w-8 text-orange-600" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content Area */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Current Protocols */}
-          <div className="lg:col-span-2">
+        {/* Stats Cards */}
+        {stats && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Dumbbell className="w-5 h-5" />
-                  <span>My Health Protocols</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {customerData?.protocols && customerData.protocols.length > 0 ? (
-                  <div className="space-y-4">
-                    {customerData.protocols.map((protocol: any) => (
-                      <div key={protocol.id} className="p-4 border rounded-lg">
-                        <h3 className="font-medium text-lg">{protocol.name}</h3>
-                        <p className="text-sm text-gray-600 mt-1">{protocol.description}</p>
-                        <div className="flex items-center space-x-4 mt-2">
-                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                            Active
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            Started: {new Date(protocol.startDate).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-slate-600 truncate">Active Protocols</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">{stats.activeProtocols || 0}</p>
                   </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Heart className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                    <p>No active health protocols yet</p>
-                    <p className="text-sm mt-1">Your trainer will assign protocols soon!</p>
+                  <div className="p-2 sm:p-3 bg-green-100 rounded-full flex-shrink-0 ml-2">
+                    <Activity className="text-green-600 h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
-                )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-slate-600 truncate">Completed</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">{stats.completedProtocols || 0}</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-blue-100 rounded-full flex-shrink-0 ml-2">
+                    <CheckCircle className="text-blue-600 h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-slate-600 truncate">Measurements</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-600">{stats.totalMeasurements || 0}</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-purple-100 rounded-full flex-shrink-0 ml-2">
+                    <Target className="text-purple-600 h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-slate-600 truncate">Weekly Progress</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-600">{stats.weeklyProgress || 0}%</p>
+                  </div>
+                  <div className="p-2 sm:p-3 bg-orange-100 rounded-full flex-shrink-0 ml-2">
+                    <TrendingUp className="text-orange-600 h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
+        )}
 
-          {/* Side Panel */}
-          <div className="space-y-6">
-            {/* Trainer Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Your Trainer</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {customerData?.trainer ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                        <User className="w-6 h-6 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{customerData.trainer.name}</p>
-                        <p className="text-sm text-gray-600">{customerData.trainer.email}</p>
-                      </div>
+        {/* Active Protocols Section */}
+        <div className="space-y-6 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-green-500 to-blue-600 rounded-xl shadow-lg">
+              <FileText className="text-white h-6 w-6" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">My Health Protocols</h2>
+              <p className="text-slate-600">Your personalized health and wellness plans</p>
+            </div>
+          </div>
+
+          <div className="grid gap-4">
+            {protocols?.length ? (
+              protocols.map((protocol) => (
+                <Card key={protocol.id}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{protocol.name}</CardTitle>
+                      <Badge 
+                        variant={protocol.status === 'active' ? 'default' : protocol.status === 'completed' ? 'secondary' : 'outline'}
+                      >
+                        {protocol.status}
+                      </Badge>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={() => {/* TODO: Implement messaging */}}
-                    >
-                      Message Trainer
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="text-center py-4 text-gray-500">
-                    <User className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm">No trainer assigned yet</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Quick Stats */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Your Progress</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Compliance Rate</span>
-                    <span className="font-bold text-green-600">95%</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Days Active</span>
-                    <span className="font-bold">42</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Goals Achieved</span>
-                    <span className="font-bold text-blue-600">3/5</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Upcoming */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center space-x-2">
-                  <Calendar className="w-4 h-4" />
-                  <span>Upcoming</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="text-sm">
-                    <p className="font-medium">Weekly Check-in</p>
-                    <p className="text-xs text-gray-500">Tomorrow at 10:00 AM</p>
-                  </div>
-                  <div className="text-sm">
-                    <p className="font-medium">Progress Photos</p>
-                    <p className="text-xs text-gray-500">Friday</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>Assigned: {new Date(protocol.assignedAt).toLocaleDateString()}</span>
+                      </div>
+                      {protocol.dueDate && (
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          <span>Due: {new Date(protocol.dueDate).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-green-400 to-blue-500 h-2 rounded-full transition-all"
+                        style={{ width: `${protocol.progress}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-1">{protocol.progress}% complete</p>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Protocols Yet</h3>
+                  <p className="text-gray-600">
+                    Your trainer will assign personalized health protocols to help you reach your goals.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
+
+        {/* Progress Tracking Section */}
+        <ProgressTracking />
       </div>
     </div>
   );
-}
+};
+
+export default Customer;

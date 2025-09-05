@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { useToast } from "../hooks/use-toast";
@@ -18,10 +19,19 @@ import { MobileCard, MobileCardContent, MobileCardHeader, MobileCardTitle } from
 export default function Admin() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading, logout } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const cacheManager = createCacheManager(queryClient);
   const [activeTab, setActiveTab] = useState("health-protocols");
   const { isMobile, isTablet } = useResponsive();
+
+  // WORKAROUND: Redirect admin users to protocols page for enhanced protocol wizard access
+  useEffect(() => {
+    if (isAuthenticated && !authLoading) {
+      console.log('🔄 ADMIN REDIRECT: Redirecting admin user to /protocols for enhanced wizard access');
+      navigate('/protocols', { replace: true });
+    }
+  }, [isAuthenticated, authLoading, navigate]);
 
   // Periodic cache refresh to keep data fresh
   useEffect(() => {

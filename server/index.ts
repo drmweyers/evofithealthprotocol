@@ -24,6 +24,7 @@ import invitationRoutes from './invitationRoutes';
 import specializedRoutes from './routes/specializedRoutes';
 import protocolRoutes from './routes/protocolRoutes';
 import protocolTemplateRoutes from './routes/protocolTemplateRoutes';
+import protocolPlansRoutes from './routes/protocolPlansRoutes';
 // import roleTestRoutes from './routes/roleTestRoutes'; // Temporarily disabled - missing schema tables
 
 // Load environment variables
@@ -87,6 +88,7 @@ app.use('/api/pdf', pdfRoutes);
 app.use('/api/specialized', specializedRoutes);
 app.use('/api/protocols', protocolRoutes);
 app.use('/api/protocol-templates', protocolTemplateRoutes);
+app.use('/api/protocol-plans', protocolPlansRoutes);
 // app.use('/api/roles', roleTestRoutes); // Temporarily disabled - missing schema tables
 
 console.log('✅ All API routes registered');

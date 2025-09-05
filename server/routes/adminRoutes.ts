@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import { requireAdmin, requireTrainerOrAdmin, requireAuth } from '../middleware/auth';
 import { storage } from '../storage';
+
 import { z } from 'zod';
-import { users } from '@shared/schema';
+import { users, protocolTemplates, trainerHealthProtocols } from '@shared/schema';
 import { db } from '../db';
+import { eq, desc } from 'drizzle-orm';
 
 const adminRouter = Router();
 
@@ -228,6 +230,86 @@ adminRouter.get('/health', requireAuth, (req, res) => {
     service: 'Admin Routes',
     timestamp: new Date().toISOString() 
   });
+});
+
+// Admin Protocol Management Endpoints
+
+// Create admin protocol template
+adminRouter.post('/protocols', requireAdmin, async (req, res) => {
+  try {
+    const userId = (req.user as any)?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const {
+      name,
+      templateId,
+      content,
+      customizations,
+      isAdminTemplate = true,
+    } = req.body;
+
+    // Create the protocol in the trainer_health_protocols table but mark it as admin-created
+    const protocol = await db.insert(trainerHealthProtocols).values({
+      trainerId: userId, // Admin user ID
+      name,
+      type: customizations?.protocolType || 'general',
+      description: customizations?.description || '',
+      duration: customizations?.duration || 30,
+      intensity: customizations?.intensity || 'moderate',
+      config: {
+        templateId,
+        content,
+        customizations,
+        isAdminTemplate,
+        createdBy: 'admin',
+        targetAudience: customizations?.targetAudience || [],
+        healthFocus: customizations?.healthFocus || [],
+        experienceLevel: customizations?.experienceLevel || 'beginner',
+      }
+    }).returning();
+
+    res.json({
+      status: 'success',
+      data: protocol[0]
+    });
+  } catch (error) {
+    console.error('Error creating admin protocol:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to create admin protocol'
+    });
+  }
+});
+
+// Get all admin protocols
+adminRouter.get('/protocols', requireAdmin, async (req, res) => {
+  try {
+    const userId = (req.user as any)?.id;
+    
+    // Get protocols created by admin (check config.isAdminTemplate flag)
+    const protocols = await db.select()
+      .from(trainerHealthProtocols)
+      .where(eq(trainerHealthProtocols.trainerId, userId))
+      .orderBy(desc(trainerHealthProtocols.createdAt));
+
+    // Filter for admin templates
+    const adminProtocols = protocols.filter(p => 
+      p.config && typeof p.config === 'object' && (p.config as any).isAdminTemplate === true
+    );
+
+    res.json({
+      status: 'success',
+      data: adminProtocols
+    });
+  } catch (error) {
+    console.error('Error fetching admin protocols:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch admin protocols'
+    });
+  }
 });
 
 // Handle removed meal plan endpoints

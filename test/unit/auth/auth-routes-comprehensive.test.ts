@@ -14,6 +14,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
+import { z } from 'zod';
 import authRouter from '../../../server/authRoutes';
 import * as auth from '../../../server/auth';
 import { storage } from '../../../server/storage';

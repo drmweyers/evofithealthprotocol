@@ -88,7 +88,12 @@ interface Client {
   lastName?: string;
 }
 
-export default function TrainerHealthProtocols() {
+interface TrainerHealthProtocolsProps {
+  shouldOpenWizard?: boolean;
+  onWizardOpened?: () => void;
+}
+
+export default function TrainerHealthProtocols({ shouldOpenWizard, onWizardOpened }: TrainerHealthProtocolsProps = {}) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -100,6 +105,14 @@ export default function TrainerHealthProtocols() {
   const [protocolDescription, setProtocolDescription] = useState('');
   const [showWizard, setShowWizard] = useState(false);
   const [showEnhancedWizard, setShowEnhancedWizard] = useState(false);
+
+  // Open wizard when triggered from parent component
+  useEffect(() => {
+    if (shouldOpenWizard) {
+      setShowEnhancedWizard(true);
+      onWizardOpened?.();
+    }
+  }, [shouldOpenWizard, onWizardOpened]);
 
   // Fetch trainer's protocols
   const { data: trainerProtocols, isLoading: protocolsLoading } = useQuery<TrainerProtocol[]>({

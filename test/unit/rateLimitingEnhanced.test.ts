@@ -35,8 +35,16 @@ describe('Enhanced Rate Limiting Middleware Tests', () => {
       
       // Mock the request to appear as localhost
       testApp.use((req, res, next) => {
-        req.ip = '127.0.0.1';
-        req.hostname = 'localhost';
+        Object.defineProperty(req, 'ip', {
+          value: '127.0.0.1',
+          writable: true,
+          configurable: true
+        });
+        Object.defineProperty(req, 'hostname', {
+          value: 'localhost',
+          writable: true,
+          configurable: true
+        });
         next();
       });
       
@@ -63,7 +71,11 @@ describe('Enhanced Rate Limiting Middleware Tests', () => {
       const testApp = express();
       
       testApp.use((req, res, next) => {
-        req.ip = '::1';
+        Object.defineProperty(req, 'ip', {
+          value: '::1',
+          writable: true,
+          configurable: true
+        });
         next();
       });
       
@@ -163,7 +175,11 @@ describe('Enhanced Rate Limiting Middleware Tests', () => {
       
       const testApp = express();
       testApp.use((req, res, next) => {
-        req.ip = '192.168.1.100'; // Non-localhost IP
+        Object.defineProperty(req, 'ip', {
+          value: '192.168.1.100', // Non-localhost IP
+          writable: true,
+          configurable: true
+        });
         next();
       });
       testApp.use(authRateLimit);
@@ -289,9 +305,17 @@ describe('Enhanced Rate Limiting Middleware Tests', () => {
         
         testApp.use((req, res, next) => {
           if (ip === 'localhost') {
-            req.hostname = ip;
+            Object.defineProperty(req, 'hostname', {
+              value: ip,
+              writable: true,
+              configurable: true
+            });
           } else {
-            req.ip = ip;
+            Object.defineProperty(req, 'ip', {
+              value: ip,
+              writable: true,
+              configurable: true
+            });
           }
           next();
         });
@@ -311,8 +335,16 @@ describe('Enhanced Rate Limiting Middleware Tests', () => {
       
       // Mock external IP
       testApp.use((req, res, next) => {
-        req.ip = '203.0.113.1'; // External IP
-        req.hostname = 'example.com';
+        Object.defineProperty(req, 'ip', {
+          value: '203.0.113.1', // External IP
+          writable: true,
+          configurable: true
+        });
+        Object.defineProperty(req, 'hostname', {
+          value: 'example.com',
+          writable: true,
+          configurable: true
+        });
         next();
       });
       
@@ -349,7 +381,11 @@ describe('Enhanced Rate Limiting Middleware Tests', () => {
       const initialMemory = process.memoryUsage().heapUsed;
       
       testApp.use((req, res, next) => {
-        req.ip = '127.0.0.1'; // Localhost - should be skipped
+        Object.defineProperty(req, 'ip', {
+          value: '127.0.0.1', // Localhost - should be skipped
+          writable: true,
+          configurable: true
+        });
         next();
       });
       

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { storage } from '../storage';
 import { eq, sql, and, desc, inArray } from 'drizzle-orm';
@@ -14,6 +15,7 @@ import {
   type ProtocolAssignment 
 } from '@shared/schema';
 import { db } from '../db';
+
 import { z } from 'zod';
 import { generateHealthProtocol, parseNaturalLanguageForHealthProtocol } from '../services/openai';
 
@@ -461,6 +463,62 @@ trainerRouter.get('/protocol-assignments', requireAuth, requireRole('trainer'), 
     res.status(500).json({ 
       status: 'error',
       message: 'Failed to fetch assignments',
+      code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// Create new protocol assignment
+trainerRouter.post('/protocol-assignments', requireAuth, requireRole('trainer'), async (req, res) => {
+  try {
+    const trainerId = req.user!.id;
+    const { 
+      customerId, 
+      protocol, 
+      templateId, 
+      customizations, 
+      safetyValidation, 
+      notes 
+    } = req.body;
+
+    // Verify the customer is linked to this trainer
+    const trainerCustomers = await storage.getTrainerCustomers(trainerId);
+    const isValidCustomer = trainerCustomers.some(customer => customer.id === customerId);
+    
+    if (!isValidCustomer) {
+      return res.status(403).json({ 
+        status: 'error',
+        message: 'Customer is not linked to this trainer' 
+      });
+    }
+
+    // Create the protocol assignment
+    const assignmentData = {
+      id: crypto.randomUUID(),
+      trainerId,
+      customerId,
+      protocol,
+      templateId,
+      customizations,
+      safetyValidation,
+      notes,
+      status: 'active',
+      assignedDate: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    const assignment = await storage.createProtocolAssignment(assignmentData);
+    
+    res.json({
+      status: 'success',
+      data: assignment
+    });
+  } catch (error) {
+    console.error('Failed to create protocol assignment:', error);
+    res.status(500).json({ 
+      status: 'error',
+      message: 'Failed to create assignment',
       code: 'SERVER_ERROR'
     });
   }

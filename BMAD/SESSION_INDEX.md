@@ -1,9 +1,29 @@
 # HealthProtocol BMAD Session Index
-**Last Updated**: December 29, 2024
+**Last Updated**: January 5, 2025
 
 ## Active Work Sessions
 
-### 1. Production Optimization (December 29, 2024)
+### 1. Admin Protocol Wizard Implementation (January 5, 2025)
+**Status**: ✅ COMPLETE - Feature Working
+**File**: `ADMIN_PROTOCOL_WIZARD_2025-01-05.md`
+
+**Summary**:
+- Implemented admin protocol wizard without customer selection requirement
+- Dynamic wizard flow: 6 steps for admin vs 7 steps for trainer
+- Admin-specific backend API endpoints with `isAdminTemplate` flag
+- Comprehensive Playwright test suite for validation
+- Zero regression - existing trainer workflows preserved
+
+**Key Achievements**:
+- ✅ Dynamic wizard step generation based on user role
+- ✅ Admin protocol creation API with proper database integration
+- ✅ Login navigation updated to direct admin users to /protocols
+- ✅ Complete end-to-end testing with Playwright
+- ✅ 14% step reduction for admin users (6 vs 7 steps)
+
+---
+
+### 2. Production Optimization (December 29, 2024)
 **Status**: ✅ COMPLETE - Production Ready
 **File**: `stories/completed/STORY-007-production-optimization.md`
 
@@ -24,7 +44,7 @@
 
 ---
 
-### 2. Mobile Responsive Dashboard (December 29, 2024)
+### 3. Mobile Responsive Dashboard (December 29, 2024)
 **Status**: ✅ COMPLETE
 **File**: `stories/completed/STORY-005-mobile-responsive-dashboard.md`
 
@@ -35,7 +55,7 @@
 - Mobile-optimized components library
 - Lazy loading for improved performance
 
-### 3. Protocol Creation Wizard (December 28, 2024)
+### 4. Protocol Creation Wizard (December 28, 2024)
 **Status**: ✅ COMPLETE
 **File**: `stories/completed/STORY-004-protocol-creation-wizard.md`
 
@@ -46,7 +66,7 @@
 - Progress tracking and validation
 - Comprehensive test coverage
 
-### 4. Specialized Protocols Implementation (December 20 - 27, 2024)
+### 5. Specialized Protocols Implementation (December 20 - 27, 2024)
 **Status**: ✅ COMPLETE - Production Ready
 **Files**: 
 - `SPECIALIZED_PROTOCOLS_SESSION_2024-12-20.md` (Design Phase)
@@ -73,6 +93,21 @@
 ---
 
 ## Quick Reference Commands
+
+### Admin Protocol Wizard Testing
+```bash
+# Test admin protocol wizard functionality
+npx playwright test test/e2e/admin-protocol-wizard-test.spec.ts --headed
+
+# Test specific admin flow scenario
+npx playwright test --grep "should skip customer selection"
+
+# Manual testing - direct navigation to protocols as admin
+# 1. Login as admin@fitmeal.pro / AdminPass123
+# 2. Navigate to http://localhost:3501/protocols
+# 3. Click "Enhanced Protocol Wizard"
+# 4. Verify 6-step flow (no customer selection)
+```
 
 ### Production Build & Testing
 ```bash
@@ -163,7 +198,13 @@ BMAD/
 5. Deploy to staging for final validation
 
 ## Next Development Priority
-**STORY-006**: Advanced Client Progress Analytics
-- Comprehensive analytics dashboard
-- Progress tracking visualizations
+**STORY-008**: Enhanced Admin Template Management
+- Admin template library with search/filter capabilities
+- Template sharing between admin and trainers
+- Bulk protocol operations and assignments
+- Admin analytics dashboard for protocol usage
 - Ready for implementation
+
+## Recently Completed Features
+**STORY-007**: Production Optimization ✅ COMPLETE
+**Admin Protocol Wizard**: Role-based protocol creation ✅ COMPLETE

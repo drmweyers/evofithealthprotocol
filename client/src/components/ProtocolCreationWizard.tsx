@@ -64,6 +64,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
+import { Save } from 'lucide-react';
 
 interface WizardStep {
   id: string;
@@ -368,6 +369,7 @@ export default function ProtocolCreationWizard({
           <CurrentStepComponent
             wizardData={wizardData}
             updateWizardData={updateWizardData}
+            onComplete={onComplete}
           />
         </CardContent>
       </Card>
@@ -402,19 +404,34 @@ export default function ProtocolCreationWizard({
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
           ) : (
-            <Button
-              onClick={() => {
-                if (validateCurrentStep()) {
-                  // Generate and complete the protocol
-                  onComplete(wizardData);
-                }
-              }}
-              disabled={!canProceedToNext()}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <Check className="h-4 w-4 mr-2" />
-              Create Protocol
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  const step = currentStepData.component as any;
+                  if (step === PreviewGenerateStep) {
+                    // This is handled inside the PreviewGenerateStep component
+                    return;
+                  }
+                }}
+                variant="outline"
+                className="hidden"
+              >
+                Save as Plan
+              </Button>
+              <Button
+                onClick={() => {
+                  if (validateCurrentStep()) {
+                    // Generate and complete the protocol
+                    onComplete(wizardData);
+                  }
+                }}
+                disabled={!canProceedToNext()}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Check className="h-4 w-4 mr-2" />
+                Create Protocol
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -1334,10 +1351,14 @@ function AdvancedOptionsStep({ wizardData, updateWizardData }: any) {
   );
 }
 
-function PreviewGenerateStep({ wizardData, updateWizardData }: any) {
+function PreviewGenerateStep({ wizardData, updateWizardData, onComplete }: any) {
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedProtocol, setGeneratedProtocol] = useState(null);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [planName, setPlanName] = useState('');
+  const [planDescription, setPlanDescription] = useState('');
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
 
   const generatePreview = async () => {
     setIsGenerating(true);
@@ -1368,6 +1389,48 @@ function PreviewGenerateStep({ wizardData, updateWizardData }: any) {
       });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const saveAsProtocolPlan = async () => {
+    setIsSavingPlan(true);
+    try {
+      const response = await fetch('/api/protocol-plans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          planName,
+          planDescription,
+          wizardConfiguration: wizardData,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save protocol plan');
+      }
+      
+      const result = await response.json();
+      
+      toast({
+        title: 'Protocol Plan Saved',
+        description: `"${planName}" has been saved to your protocol library.`,
+      });
+
+      setShowPlanModal(false);
+      // Optionally navigate to the plans library or complete
+      if (onComplete) {
+        onComplete({ type: 'plan', data: result.data });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Save Failed',
+        description: error.message || 'Failed to save protocol plan. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingPlan(false);
     }
   };
 
@@ -1415,27 +1478,53 @@ function PreviewGenerateStep({ wizardData, updateWizardData }: any) {
         </CardContent>
       </Card>
 
-      {/* Generate Preview Button */}
-      <div className="text-center">
-        <Button
-          onClick={generatePreview}
-          disabled={isGenerating}
-          className="bg-blue-600 hover:bg-blue-700"
-          size="lg"
-        >
-          {isGenerating ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              Generating Preview...
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-4 w-4 mr-2" />
-              Generate Protocol Preview
-            </>
-          )}
-        </Button>
-      </div>
+      {/* Generate Preview Button or Action Buttons */}
+      {!generatedProtocol ? (
+        <div className="text-center">
+          <Button
+            onClick={generatePreview}
+            disabled={isGenerating}
+            className="bg-blue-600 hover:bg-blue-700"
+            size="lg"
+          >
+            {isGenerating ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Generating Preview...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Generate Protocol Preview
+              </>
+            )}
+          </Button>
+        </div>
+      ) : (
+        <div className="flex justify-center gap-4">
+          <Button
+            onClick={() => setShowPlanModal(true)}
+            size="lg"
+            variant="outline"
+            className="min-w-[200px]"
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Save as Protocol Plan
+          </Button>
+          <Button
+            onClick={() => {
+              if (onComplete) {
+                onComplete({ type: 'immediate', data: wizardData });
+              }
+            }}
+            size="lg"
+            className="bg-green-600 hover:bg-green-700 min-w-[200px]"
+          >
+            <Check className="h-4 w-4 mr-2" />
+            Create & Assign Now
+          </Button>
+        </div>
+      )}
 
       {/* Generated Preview */}
       {generatedProtocol && (
@@ -1462,10 +1551,65 @@ function PreviewGenerateStep({ wizardData, updateWizardData }: any) {
           <CheckCircle className="h-4 w-4" />
           <AlertTitle>Ready to Create Protocol</AlertTitle>
           <AlertDescription>
-            Your protocol has been generated and validated. Click "Create Protocol" to save it to your protocol library.
+            Your protocol has been generated and validated. You can now save it as a reusable plan or create it immediately.
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Save as Plan Modal */}
+      <Dialog open={showPlanModal} onOpenChange={setShowPlanModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save as Protocol Plan</DialogTitle>
+            <DialogDescription>
+              Give your protocol plan a name and description for future use.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="plan-name">Plan Name *</Label>
+              <Input
+                id="plan-name"
+                value={planName}
+                onChange={(e) => setPlanName(e.target.value)}
+                placeholder="e.g., 30-Day Beginner Wellness"
+              />
+            </div>
+            <div>
+              <Label htmlFor="plan-description">Description</Label>
+              <Textarea
+                id="plan-description"
+                value={planDescription}
+                onChange={(e) => setPlanDescription(e.target.value)}
+                placeholder="Describe when to use this protocol plan..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowPlanModal(false)}
+              disabled={isSavingPlan}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={saveAsProtocolPlan}
+              disabled={!planName.trim() || isSavingPlan}
+            >
+              {isSavingPlan ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Saving...
+                </>
+              ) : (
+                'Save Plan'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

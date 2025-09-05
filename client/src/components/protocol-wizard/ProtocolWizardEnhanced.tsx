@@ -885,7 +885,7 @@ function ClientSelectionStep({ clients, selected, onSelect }: any) {
 
 function TemplateSelectionStep({ templates, selected, onSelect }: any) {
   const categories = [...new Set(templates.map((t: ProtocolTemplate) => t.category))];
-  const [selectedCategory, setSelectedCategory] = useState(categories[0] || 'All');
+  const [selectedCategory, setSelectedCategory] = useState<string>(categories[0] || 'All');
   
   const filteredTemplates = selectedCategory === 'All' 
     ? templates 
@@ -903,7 +903,7 @@ function TemplateSelectionStep({ templates, selected, onSelect }: any) {
       <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="All">All</TabsTrigger>
-          {categories.slice(0, 3).map(cat => (
+          {categories.slice(0, 3).map((cat: string) => (
             <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
           ))}
         </TabsList>

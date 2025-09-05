@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireAdmin, requireTrainerOrAdmin, requireAuth } from '../middleware/auth';
 import { storage } from '../storage';
+
 import { z } from 'zod';
 import { users, protocolTemplates, trainerHealthProtocols } from '@shared/schema';
 import { db } from '../db';

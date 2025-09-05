@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, LogOut, Home, User } from 'lucide-react';
+import { Shield, LogOut, Home, User, FileText } from 'lucide-react';
 import { MobileNavigation } from './mobile/MobileNavigation';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
@@ -42,6 +42,20 @@ export const ResponsiveHeader: React.FC<ResponsiveHeaderProps> = ({ title, showA
               <span className="text-sm text-gray-600">
                 {user?.name || user?.email}
               </span>
+              
+              {/* Health Protocols link for trainers and admins */}
+              {(user?.role === 'trainer' || user?.role === 'admin') && (
+                <Button
+                  onClick={() => navigate('/protocols')}
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-700 hover:text-gray-900"
+                >
+                  <FileText className="h-4 w-4 mr-1" />
+                  Health Protocols
+                </Button>
+              )}
+              
               <Button
                 onClick={() => navigate('/profile')}
                 variant="ghost"

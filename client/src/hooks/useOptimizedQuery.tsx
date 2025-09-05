@@ -181,7 +181,7 @@ export function useOptimizedQuery<T = any>(
     queryFn: fetchData,
     enabled: enabled && !!user,
     ...cacheConfig,
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       onSuccess?.(data);
     },
     onError: (error: Error) => {
@@ -297,7 +297,7 @@ export function useBatchRequest<T = any>(
     },
     enabled,
     staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000
+    gcTime: 10 * 60 * 1000
   });
 
   return results;

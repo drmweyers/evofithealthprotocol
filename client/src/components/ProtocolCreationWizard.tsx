@@ -64,15 +64,6 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from './ui/dialog';
-import { Textarea } from './ui/textarea';
 import { Save } from 'lucide-react';
 
 interface WizardStep {

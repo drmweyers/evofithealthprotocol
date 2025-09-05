@@ -116,13 +116,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   // Debug logging
-  React.useEffect(() => {
+  useEffect(() => {
     console.log('🔍 AuthContext Debug - authToken:', authToken ? 'EXISTS' : 'NULL');
     console.log('🔍 AuthContext Debug - localStorage token:', localStorage.getItem('token') ? 'EXISTS' : 'NULL');
   }, [authToken]);
 
   // Additional sync check - ensure authToken stays in sync with localStorage
-  React.useEffect(() => {
+  useEffect(() => {
     const storageToken = localStorage.getItem('token');
     if (storageToken !== authToken) {
       console.log('🔧 AuthContext Fix - syncing authToken with localStorage');

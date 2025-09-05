@@ -15,6 +15,7 @@ import {
   type ProtocolAssignment 
 } from '@shared/schema';
 import { db } from '../db';
+
 import { z } from 'zod';
 import { generateHealthProtocol, parseNaturalLanguageForHealthProtocol } from '../services/openai';
 

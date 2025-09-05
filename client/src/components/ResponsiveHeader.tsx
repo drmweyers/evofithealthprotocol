@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, LogOut, Home } from 'lucide-react';
+import { Shield, LogOut, Home, User } from 'lucide-react';
 import { MobileNavigation } from './mobile/MobileNavigation';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,43 +20,47 @@ export const ResponsiveHeader: React.FC<ResponsiveHeaderProps> = ({ title, showA
     navigate('/');
   };
 
-  // Render both mobile and desktop versions, use CSS to show/hide
+  // Single responsive header that adapts to screen size
   return (
-    <>
-      {/* Mobile Header - visible only on small screens */}
-      <nav className="mobile-header bg-white shadow-sm border-b sticky top-0 z-40">
-        <div className="px-4 py-3">
-          <div className="flex items-center">
-            <MobileNavigation />
-            <Shield className="h-5 w-5 text-blue-600 ml-2 mr-2" />
-            <h1 className="text-base font-semibold text-gray-900">
-              {title === 'Health Protocol Management System' ? 'Health Protocols' : title}
-            </h1>
-          </div>
-        </div>
-      </nav>
-
-      {/* Desktop Header - visible only on medium+ screens */}
-      <nav className="desktop-header bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
+    <nav className="bg-white shadow-sm border-b sticky top-0 z-40">
+      <div className="px-4 py-3 sm:py-0">
+        <div className="sm:max-w-7xl sm:mx-auto sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between sm:h-16">
+            {/* Mobile menu and logo */}
             <div className="flex items-center">
-              <Shield className="h-8 w-8 text-blue-600 mr-3" />
-              <h1 className="text-xl font-bold text-gray-900">{title}</h1>
+              <div className="sm:hidden">
+                <MobileNavigation />
+              </div>
+              <Shield className="h-5 w-5 sm:h-8 sm:w-8 text-blue-600 ml-2 mr-2 sm:ml-0 sm:mr-3" />
+              <h1 className="text-base sm:text-xl font-semibold sm:font-bold text-gray-900">
+                {title === 'Health Protocol Management System' ? 'Health Protocols' : title}
+              </h1>
             </div>
             
-            <div className="flex items-center space-x-4">
+            {/* Desktop navigation */}
+            <div className="hidden sm:flex items-center space-x-4">
               <span className="text-sm text-gray-600">
                 {user?.name || user?.email}
               </span>
+              <Button
+                onClick={() => navigate('/profile')}
+                variant="ghost"
+                size="sm"
+                className="text-gray-700 hover:text-gray-900"
+              >
+                <User className="h-4 w-4 mr-1" />
+                Profile
+              </Button>
               {showAdminButton && user?.role === 'admin' && (
-                <button
+                <Button
                   onClick={() => navigate('/admin')}
-                  className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition"
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-700 hover:text-gray-900"
                 >
                   <Home className="h-4 w-4 mr-1" />
                   Admin
-                </button>
+                </Button>
               )}
               <Button
                 onClick={handleLogout}
@@ -70,7 +74,7 @@ export const ResponsiveHeader: React.FC<ResponsiveHeaderProps> = ({ title, showA
             </div>
           </div>
         </div>
-      </nav>
-    </>
+      </div>
+    </nav>
   );
 };

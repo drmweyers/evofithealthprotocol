@@ -348,4 +348,73 @@ Staging Deploy → Integration Tests → Production Deploy
 
 ---
 
+## 11. Recent Technical Improvements (January 2025)
+
+### 11.1 Customer-Trainer Linkage Fix (STORY-009)
+**Completed:** January 4, 2025  
+**Impact:** Critical bug fix for core platform feature
+
+#### Problem Solved
+- Drizzle ORM join operation was failing when fetching trainer information for customer profiles
+- Customers couldn't see their assigned trainer's information
+- Database query errors were preventing proper data relationships
+
+#### Technical Solution
+```typescript
+// Fixed Drizzle ORM query with proper join syntax
+const result = await db
+  .select({
+    trainerId: protocolAssignments.trainerId,
+    trainerEmail: users.email,
+    trainerName: users.name,
+    trainerProfilePicture: users.profilePicture,
+  })
+  .from(protocolAssignments)
+  .innerJoin(users, eq(protocolAssignments.trainerId, users.id))
+  .where(eq(protocolAssignments.customerId, customerId))
+  .orderBy(sql`${protocolAssignments.assignedAt} DESC`)
+  .limit(1);
+```
+
+#### Key Improvements
+- ✅ Proper table joining with explicit column selection
+- ✅ Fixed schema validation in trainer routes
+- ✅ Added comprehensive error handling
+- ✅ Graceful fallback for unassigned customers
+- ✅ Enhanced API response structure with trainer details
+
+#### Testing Coverage Added
+- API integration tests for profile endpoints
+- Playwright E2E tests for profile navigation
+- Verification scripts for trainer linkage
+- Edge case handling tests
+
+### 11.2 Database Query Patterns
+**Best Practices Established:**
+- Use explicit column selection in Drizzle joins
+- Separate URL params from body validation schemas
+- Order by timestamp for most recent relationships
+- Implement proper null handling for optional relationships
+
+### 11.3 API Response Standardization
+**New Pattern for Profile Responses:**
+```json
+{
+  "profile": {
+    "user": {},
+    "trainer": {
+      "id": "uuid",
+      "name": "string",
+      "email": "string",
+      "specialization": "string",
+      "experience": "number"
+    },
+    "stats": {},
+    "relationships": []
+  }
+}
+```
+
+---
+
 _This planning document is maintained by the BMAD Architecture Agent and updated regularly to reflect current technical decisions and future planning._

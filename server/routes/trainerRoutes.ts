@@ -19,6 +19,72 @@ import { generateHealthProtocol, parseNaturalLanguageForHealthProtocol } from '.
 
 const trainerRouter = Router();
 
+// Get trainer profile with client list
+trainerRouter.get('/profile', requireAuth, requireRole('trainer'), async (req, res) => {
+  try {
+    const trainerId = req.user!.id;
+    
+    // Get trainer user info
+    const trainerUser = await storage.getUser(trainerId);
+    if (!trainerUser) {
+      return res.status(404).json({ error: 'Trainer user not found' });
+    }
+    
+    // Get trainer's clients
+    const [clientsResult] = await db.select({
+      id: users.id,
+      name: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.email})`,
+      email: users.email,
+      assignedAt: protocolAssignments.createdAt,
+      status: sql<string>`'active'`,
+      lastActivity: sql<Date>`MAX(${protocolAssignments.updatedAt})`,
+    })
+    .from(protocolAssignments)
+    .innerJoin(users, eq(users.id, protocolAssignments.customerId))
+    .where(eq(protocolAssignments.trainerId, trainerId))
+    .groupBy(users.id, users.firstName, users.lastName, users.email, protocolAssignments.createdAt);
+
+    // Get stats
+    const [protocolsCreated] = await db.select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(trainerHealthProtocols)
+    .where(eq(trainerHealthProtocols.trainerId, trainerId));
+    
+    const [activePrograms] = await db.select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(protocolAssignments)
+    .where(and(
+      eq(protocolAssignments.trainerId, trainerId),
+      eq(protocolAssignments.status, 'active')
+    ));
+
+    const profile = {
+      id: trainerUser.id,
+      email: trainerUser.email,
+      firstName: trainerUser.firstName || 'Trainer',
+      lastName: trainerUser.lastName || 'User',
+      profileImage: trainerUser.profileImage,
+      specialization: 'Fitness & Nutrition', // Could be stored in trainer table
+      experience: 5, // Could be stored in trainer table
+      certifications: ['CPT', 'Nutrition Specialist'], // Could be stored
+      clients: clientsResult || [],
+      stats: {
+        totalClients: clientsResult?.length || 0,
+        activePrograms: activePrograms?.count || 0,
+        completedPrograms: 0, // Could calculate from assignments
+        avgClientSatisfaction: 4.8, // Could calculate from reviews
+      },
+    };
+    
+    res.json(profile);
+  } catch (error) {
+    console.error('Failed to fetch trainer profile:', error);
+    res.status(500).json({ error: 'Failed to fetch trainer profile' });
+  }
+});
+
 // Trainer profile statistics endpoint
 trainerRouter.get('/profile/stats', requireAuth, requireRole('trainer'), async (req, res) => {
   try {
@@ -330,7 +396,13 @@ trainerRouter.delete('/protocols/:id', requireAuth, requireRole('trainer'), asyn
 trainerRouter.post('/protocols/:id/assign', requireAuth, requireRole('trainer'), async (req, res) => {
   try {
     const { id: protocolId } = req.params;
-    const { clientIds, notes, startDate } = assignProtocolSchema.parse(req.body);
+    // Parse the body without protocolId since it comes from URL
+    const bodySchema = z.object({
+      clientIds: z.array(z.string().uuid()),
+      notes: z.string().optional(),
+      startDate: z.string().datetime().optional(),
+    });
+    const { clientIds, notes, startDate } = bodySchema.parse(req.body);
     const trainerId = req.user!.id;
     
     // Verify protocol ownership

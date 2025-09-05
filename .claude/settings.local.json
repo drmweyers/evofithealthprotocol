@@ -98,7 +98,8 @@
       "Bash(npm audit:*)",
       "Bash(npm run build:*)",
       "Bash(npx vite build:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(git merge:*)"
     ],
     "deny": [],
     "ask": [],

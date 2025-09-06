@@ -112,7 +112,9 @@
       "Bash(npm run test:e2e:*)",
       "Bash(sed:*)",
       "Bash(timeout:*)",
-      "Bash(move:*)"
+      "Bash(move:*)",
+      "Bash(del nul)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": [],

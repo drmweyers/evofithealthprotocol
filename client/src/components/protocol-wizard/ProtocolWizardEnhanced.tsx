@@ -79,6 +79,8 @@ import {
   hasErrors,
   sanitizeProtocolFormData 
 } from '../../utils/sanitization';
+import ClientAilmentsSelector from '../ClientAilmentsSelector';
+import ParasiteCleanseProtocol from '../ParasiteCleanseProtocol';
 
 // Types
 interface ProtocolTemplate {
@@ -190,6 +192,9 @@ export default function ProtocolWizardEnhanced({
     customizations: {
       goals: [],
       conditions: [],
+      selectedAilments: [],
+      parasiteCleanseOptions: {},
+      includesParasiteCleanse: false,
       medications: [],
       allergies: [],
       preferences: [],
@@ -423,11 +428,15 @@ export default function ProtocolWizardEnhanced({
       
       // Step 2: Health information validation
       if (wizardData.step === 2) {
-        if (wizardData.customizations.conditions.length === 0 && 
-            wizardData.customizations.medications.length === 0) {
+        const hasAilments = wizardData.customizations.selectedAilments && wizardData.customizations.selectedAilments.length > 0;
+        const hasConditions = wizardData.customizations.conditions && wizardData.customizations.conditions.length > 0;
+        const hasMedications = wizardData.customizations.medications && wizardData.customizations.medications.length > 0;
+        const hasParasiteCleanse = wizardData.customizations.includesParasiteCleanse;
+        
+        if (!hasAilments && !hasConditions && !hasMedications && !hasParasiteCleanse) {
           toast({
             title: 'Information Required',
-            description: 'Please provide at least some health information.',
+            description: 'Please select at least one health concern or provide medical information.',
             variant: 'destructive',
           });
           return;
@@ -469,11 +478,15 @@ export default function ProtocolWizardEnhanced({
       
       // Step 3: Health information validation
       if (wizardData.step === 3) {
-        if (wizardData.customizations.conditions.length === 0 && 
-            wizardData.customizations.medications.length === 0) {
+        const hasAilments = wizardData.customizations.selectedAilments && wizardData.customizations.selectedAilments.length > 0;
+        const hasConditions = wizardData.customizations.conditions && wizardData.customizations.conditions.length > 0;
+        const hasMedications = wizardData.customizations.medications && wizardData.customizations.medications.length > 0;
+        const hasParasiteCleanse = wizardData.customizations.includesParasiteCleanse;
+        
+        if (!hasAilments && !hasConditions && !hasMedications && !hasParasiteCleanse) {
           toast({
             title: 'Information Required',
-            description: 'Please provide at least some health information.',
+            description: 'Please select at least one health concern or provide medical information.',
             variant: 'destructive',
           });
           return;
@@ -961,16 +974,30 @@ function TemplateSelectionStep({ templates, selected, onSelect }: any) {
 }
 
 function HealthInformationStep({ data, onChange }: any) {
-  const [newCondition, setNewCondition] = useState('');
   const [newMedication, setNewMedication] = useState('');
   const [newAllergy, setNewAllergy] = useState('');
+  const [showParasiteCleanse, setShowParasiteCleanse] = useState(false);
+  
+  // Ensure selectedAilments exists in data
+  React.useEffect(() => {
+    if (!data.selectedAilments) {
+      onChange({
+        ...data,
+        selectedAilments: [],
+        parasiteCleanseOptions: {},
+        conditions: data.conditions || [],
+        medications: data.medications || [],
+        allergies: data.allergies || []
+      });
+    }
+  }, []);
   
   const addItem = (type: string, value: string) => {
     const sanitized = sanitizeDescription(value.trim());
     if (sanitized) {
       onChange({
         ...data,
-        [type]: [...data[type], sanitized]
+        [type]: [...(data[type] || []), sanitized]
       });
     }
   };
@@ -982,59 +1009,82 @@ function HealthInformationStep({ data, onChange }: any) {
     });
   };
   
+  const handleAilmentSelection = (ailmentIds: string[]) => {
+    onChange({
+      ...data,
+      selectedAilments: ailmentIds,
+      // Map ailments to conditions for backward compatibility
+      conditions: ailmentIds
+    });
+  };
+  
+  const handleParasiteCleanseUpdate = (options: any) => {
+    onChange({
+      ...data,
+      parasiteCleanseOptions: options,
+      includesParasiteCleanse: true
+    });
+  };
+  
   return (
     <div className="space-y-6">
       <Alert>
         <Info className="h-4 w-4" />
-        <AlertTitle>Medical Information</AlertTitle>
+        <AlertTitle>Medical Information & Health Concerns</AlertTitle>
         <AlertDescription>
-          Provide accurate health information for safety validation and personalization
+          Select your health concerns and provide medical information for personalized protocol creation
         </AlertDescription>
       </Alert>
       
-      {/* Health Conditions */}
+      {/* Ailments Selection */}
       <div>
-        <Label>Health Conditions</Label>
-        <div className="flex gap-2 mt-2">
-          <Input
-            value={newCondition}
-            onChange={(e) => setNewCondition(e.target.value)}
-            placeholder="e.g., Hypertension, Diabetes"
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                addItem('conditions', newCondition);
-                setNewCondition('');
-              }
-            }}
-          />
+        <Label className="text-lg font-semibold mb-4 block">Select Your Health Concerns</Label>
+        <p className="text-sm text-muted-foreground mb-4">
+          Choose from common health concerns including digestive issues (bloating, IBS), pain conditions (joint pain, muscle aches), 
+          inflammation, fatigue, and more. You can select multiple concerns.
+        </p>
+        <ClientAilmentsSelector
+          selectedAilments={data.selectedAilments || []}
+          onSelectionChange={handleAilmentSelection}
+          maxSelections={15}
+          showNutritionalSummary={true}
+          showCategoryCount={true}
+        />
+      </div>
+      
+      {/* Parasite Cleanse Options */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <Label className="text-lg font-semibold">Parasite Cleanse Protocol</Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              Add comprehensive parasite cleansing with natural herbs and protocols
+            </p>
+          </div>
           <Button
-            variant="outline"
-            onClick={() => {
-              addItem('conditions', newCondition);
-              setNewCondition('');
-            }}
+            variant={showParasiteCleanse ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowParasiteCleanse(!showParasiteCleanse)}
           >
-            Add
+            {showParasiteCleanse ? 'Hide' : 'Add'} Parasite Cleanse
           </Button>
         </div>
-        <div className="flex flex-wrap gap-2 mt-2">
-          {data.conditions.map((condition: string, index: number) => (
-            <Badge key={index} variant="secondary">
-              {condition}
-              <button
-                onClick={() => removeItem('conditions', index)}
-                className="ml-2 hover:text-destructive"
-              >
-                <XCircle className="w-3 h-3" />
-              </button>
-            </Badge>
-          ))}
-        </div>
+        {showParasiteCleanse && (
+          <Card className="p-4 bg-orange-50 border-orange-200">
+            <ParasiteCleanseProtocol
+              onProtocolGenerate={handleParasiteCleanseUpdate}
+              isEmbedded={true}
+            />
+          </Card>
+        )}
       </div>
       
       {/* Current Medications */}
       <div>
         <Label>Current Medications</Label>
+        <p className="text-sm text-muted-foreground mb-2">
+          List any medications you're currently taking for safety validation
+        </p>
         <div className="flex gap-2 mt-2">
           <Input
             value={newMedication}
@@ -1058,7 +1108,7 @@ function HealthInformationStep({ data, onChange }: any) {
           </Button>
         </div>
         <div className="flex flex-wrap gap-2 mt-2">
-          {data.medications.map((medication: string, index: number) => (
+          {(data.medications || []).map((medication: string, index: number) => (
             <Badge key={index} variant="secondary">
               {medication}
               <button
@@ -1075,11 +1125,14 @@ function HealthInformationStep({ data, onChange }: any) {
       {/* Allergies */}
       <div>
         <Label>Allergies & Sensitivities</Label>
+        <p className="text-sm text-muted-foreground mb-2">
+          Include food allergies, drug allergies, and environmental sensitivities
+        </p>
         <div className="flex gap-2 mt-2">
           <Input
             value={newAllergy}
             onChange={(e) => setNewAllergy(e.target.value)}
-            placeholder="e.g., Latex, Penicillin"
+            placeholder="e.g., Latex, Penicillin, Peanuts"
             onKeyPress={(e) => {
               if (e.key === 'Enter') {
                 addItem('allergies', newAllergy);
@@ -1098,7 +1151,7 @@ function HealthInformationStep({ data, onChange }: any) {
           </Button>
         </div>
         <div className="flex flex-wrap gap-2 mt-2">
-          {data.allergies.map((allergy: string, index: number) => (
+          {(data.allergies || []).map((allergy: string, index: number) => (
             <Badge key={index} variant="secondary">
               {allergy}
               <button

@@ -34,7 +34,7 @@ services:
     container_name: evofithealthprotocol-dev
     restart: unless-stopped
     ports:
-      - "3501:3501"  # Backend (API server)
+      - "3501:3501"  # Backend (API server) serving frontend and API
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-healthprotocol_user}:${POSTGRES_PASSWORD:-healthprotocol_secure_pass_2024}@postgres:5432/${POSTGRES_DB:-evofithealthprotocol_db}
       PORT: 3501

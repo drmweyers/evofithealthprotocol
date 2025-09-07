@@ -94,10 +94,16 @@ interface TrainerHealthProtocolsProps {
 }
 
 export default function TrainerHealthProtocols({ shouldOpenWizard, onWizardOpened }: TrainerHealthProtocolsProps = {}) {
+  // CRITICAL DEBUG LOGGING - DO NOT REMOVE
+  console.error('🚨🚨🚨 TRAINER HEALTH PROTOCOLS - MOUNTING');
+  console.error('🚨 Props:', { shouldOpenWizard, hasOnWizardOpened: !!onWizardOpened });
+  
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('create');
+  
+  console.error('🚨 User:', { id: user?.id, role: user?.role, email: user?.email });
   const [selectedProtocol, setSelectedProtocol] = useState<TrainerProtocol | null>(null);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
@@ -105,14 +111,23 @@ export default function TrainerHealthProtocols({ shouldOpenWizard, onWizardOpene
   const [protocolDescription, setProtocolDescription] = useState('');
   const [showWizard, setShowWizard] = useState(false);
   const [showEnhancedWizard, setShowEnhancedWizard] = useState(false);
+  
+  console.error('🚨 Initial showEnhancedWizard state:', showEnhancedWizard);
 
   // Open wizard when triggered from parent component
   useEffect(() => {
+    console.error('🚨 useEffect triggered - shouldOpenWizard:', shouldOpenWizard);
     if (shouldOpenWizard) {
+      console.error('🚨 Setting showEnhancedWizard to true');
       setShowEnhancedWizard(true);
       onWizardOpened?.();
     }
   }, [shouldOpenWizard, onWizardOpened]);
+  
+  // Log state changes
+  useEffect(() => {
+    console.error('🚨 showEnhancedWizard state changed to:', showEnhancedWizard);
+  }, [showEnhancedWizard]);
 
   // Fetch trainer's protocols
   const { data: trainerProtocols, isLoading: protocolsLoading } = useQuery<TrainerProtocol[]>({
@@ -242,6 +257,62 @@ export default function TrainerHealthProtocols({ shouldOpenWizard, onWizardOpene
 
   return (
     <div className="space-y-6">
+      {/* TEST MODAL - CRITICAL DEBUG - DO NOT REMOVE */}
+      <div style={{
+        position: 'fixed',
+        top: '100px',
+        right: '10px',
+        zIndex: 99999,
+        background: 'white',
+        border: '2px solid red',
+        padding: '10px',
+        borderRadius: '8px'
+      }}>
+        <Button 
+          onClick={() => {
+            console.error('🚨 TEST MODAL BUTTON CLICKED');
+            setShowTestModal(true);
+          }}
+          className="bg-red-500 hover:bg-red-600 text-white"
+        >
+          🚨 Test Modal
+        </Button>
+      </div>
+      
+      {/* Simple test modal to verify modal functionality */}
+      {showTestModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '40px',
+            borderRadius: '8px',
+            border: '4px solid green'
+          }}>
+            <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>
+              🎉 TEST MODAL WORKS! 🎉
+            </h1>
+            <p>If you see this, basic modal functionality is working.</p>
+            <Button 
+              onClick={() => setShowTestModal(false)}
+              className="mt-4"
+            >
+              Close Test Modal
+            </Button>
+          </div>
+        </div>
+      )}
+      
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="create">Create Protocols</TabsTrigger>
@@ -251,12 +322,31 @@ export default function TrainerHealthProtocols({ shouldOpenWizard, onWizardOpene
 
         {/* Create Protocols Tab */}
         <TabsContent value="create" className="space-y-6">
-          {showEnhancedWizard ? (
-            <ProtocolWizardEnhanced
-              onComplete={handleWizardComplete}
-              onCancel={() => setShowEnhancedWizard(false)}
-            />
-          ) : showWizard ? (
+          {/* Protocol Wizard Dialog */}
+          {console.error('🚨 Dialog render check - showEnhancedWizard:', showEnhancedWizard)}
+          <Dialog 
+            open={showEnhancedWizard} 
+            onOpenChange={(open) => {
+              console.error('🚨 Dialog onOpenChange called with:', open);
+              setShowEnhancedWizard(open);
+            }}
+          >
+            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+              {console.error('🚨 DialogContent rendering - showEnhancedWizard:', showEnhancedWizard)}
+              <DialogHeader className="sr-only">
+                <DialogTitle>Protocol Creation Wizard</DialogTitle>
+              </DialogHeader>
+              <ProtocolWizardEnhanced
+                onComplete={handleWizardComplete}
+                onCancel={() => {
+                  console.error('🚨 Wizard onCancel called');
+                  setShowEnhancedWizard(false);
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+
+          {showWizard ? (
             <ProtocolCreationWizard
               onComplete={handleWizardComplete}
               onCancel={handleWizardCancel}
@@ -276,7 +366,16 @@ export default function TrainerHealthProtocols({ shouldOpenWizard, onWizardOpene
                 <CardContent className="space-y-6">
                   {/* Creation Method Selection */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setShowEnhancedWizard(true)}>
+                    <Card 
+                      className="cursor-pointer hover:shadow-md transition-shadow" 
+                      onClick={() => {
+                        console.error('🚨🚨🚨 ENHANCED WIZARD CARD CLICKED!');
+                        console.error('🚨 Current showEnhancedWizard:', showEnhancedWizard);
+                        console.error('🚨 Setting showEnhancedWizard to true...');
+                        setShowEnhancedWizard(true);
+                        console.error('🚨 setShowEnhancedWizard(true) called');
+                      }}
+                    >
                       <CardContent className="p-6 text-center">
                         <Sparkles className="h-12 w-12 text-blue-600 mx-auto mb-4" />
                         <h3 className="text-lg font-semibold mb-2">Enhanced Protocol Wizard</h3>
@@ -337,7 +436,6 @@ export default function TrainerHealthProtocols({ shouldOpenWizard, onWizardOpene
           <div className="relative">
             <SpecializedProtocolsPanel 
               onConfigChange={(config) => {
-                console.log('Protocol config updated:', config);
                 // Trigger protocol list refresh when protocols are generated/updated
                 if (config.longevity?.isEnabled || config.parasiteCleanse?.isEnabled || 
                     (config.clientAilments?.includeInMealPlanning && config.clientAilments?.selectedAilments?.length > 0)) {

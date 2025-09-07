@@ -99,6 +99,14 @@ function App() {
               } 
             />
             <Route 
+              path="/trainer/health-protocols" 
+              element={
+                <PrivateRoute allowedRoles={['trainer']}>
+                  <HealthProtocolDashboard />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
               path="/admin" 
               element={
                 <PrivateRoute allowedRoles={['admin']}>

@@ -115,17 +115,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  // Debug logging
-  useEffect(() => {
-    console.log('🔍 AuthContext Debug - authToken:', authToken ? 'EXISTS' : 'NULL');
-    console.log('🔍 AuthContext Debug - localStorage token:', localStorage.getItem('token') ? 'EXISTS' : 'NULL');
-  }, [authToken]);
-
   // Additional sync check - ensure authToken stays in sync with localStorage
   useEffect(() => {
     const storageToken = localStorage.getItem('token');
     if (storageToken !== authToken) {
-      console.log('🔧 AuthContext Fix - syncing authToken with localStorage');
       setAuthToken(storageToken);
     }
   }, []);
@@ -134,7 +127,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     queryKey: [`${API_BASE_URL}/auth/me`],
     queryFn: async () => {
       const currentToken = authToken || localStorage.getItem('token');
-      console.log('🔍 useQuery Debug - Running auth/me query with token:', currentToken ? 'EXISTS' : 'NULL');
       
       if (!currentToken) {
         throw new Error('No token available');
@@ -179,7 +171,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return normalized.user;
       } catch (error) {
         if (error instanceof Error && error.message.includes('Session expired')) {
-          console.log('⚠️ Session expired error detected, but not auto-redirecting to allow component handling');
           // Don't automatically logout here - let individual components handle auth errors
           // await handleLogout();
         }

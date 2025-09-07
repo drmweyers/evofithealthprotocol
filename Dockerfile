@@ -35,7 +35,7 @@ COPY --chown=appuser:appgroup . .
 # Install client dependencies
 RUN cd client && npm install
 
-EXPOSE 3501 24678
+EXPOSE 3500 3501 24679
 
 # Start only the backend - frontend will be run separately or in production build
 CMD ["npx", "tsx", "server/index.ts"]

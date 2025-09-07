@@ -114,7 +114,8 @@
       "Bash(timeout:*)",
       "Bash(move:*)",
       "Bash(del nul)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(npm run:*)"
     ],
     "deny": [],
     "ask": [],

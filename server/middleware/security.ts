@@ -100,8 +100,21 @@ export const securityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      styleSrc: [
+        "'self'", 
+        "'unsafe-inline'", 
+        "https://fonts.googleapis.com",
+        "https://cdnjs.cloudflare.com"  // Allow Font Awesome CSS
+      ],
+      fontSrc: [
+        "'self'", 
+        "https://fonts.gstatic.com",
+        "https://cdnjs.cloudflare.com",  // Allow Font Awesome fonts
+        "https://ka-f.fontawesome.com",   // Font Awesome CDN
+        "https://ka-p.fontawesome.com",   // Font Awesome Pro CDN
+        "https://use.fontawesome.com",    // Font Awesome Use CDN
+        "data:"                            // Allow data URLs for fonts
+      ],
       scriptSrc: ["'self'", "'unsafe-inline'"], // TODO: Remove unsafe-inline in production
       imgSrc: ["'self'", "data:", "https:", "blob:"],
       connectSrc: ["'self'", "https://api.openai.com"],

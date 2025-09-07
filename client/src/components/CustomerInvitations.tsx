@@ -9,6 +9,7 @@ import { Textarea } from "./ui/textarea";
 import { Alert, AlertDescription } from "./ui/alert";
 import { useToast } from "../hooks/use-toast";
 import { useAuth } from "../contexts/AuthContext";
+import { Plus, Loader2, Send, Calendar, Clock, Check, Copy, Mail } from "lucide-react";
 
 interface Invitation {
   id: string;
@@ -88,7 +89,6 @@ export default function CustomerInvitations() {
       // In development or when email fails, show the invitation link
       if (process.env.NODE_ENV === 'development' || !isEmailSent) {
         if (data.data.invitation.invitationLink) {
-          console.log('Invitation Link:', data.data.invitation.invitationLink);
           toast({
             title: "Manual Invitation Link",
             description: `Please share this link manually: ${data.data.invitation.invitationLink}`,
@@ -168,7 +168,7 @@ export default function CustomerInvitations() {
           onClick={() => setShowForm(!showForm)}
           className="sm:self-start"
         >
-          <i className="fas fa-plus mr-2"></i>
+          <Plus className="w-4 h-4 mr-2" />
           Send Invitation
         </Button>
       </div>
@@ -211,12 +211,12 @@ export default function CustomerInvitations() {
                 >
                   {sendInvitationMutation.isPending ? (
                     <>
-                      <i className="fas fa-spinner fa-spin mr-2"></i>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Sending...
                     </>
                   ) : (
                     <>
-                      <i className="fas fa-paper-plane mr-2"></i>
+                      <Send className="w-4 h-4 mr-2" />
                       Send Invitation
                     </>
                   )}
@@ -270,16 +270,16 @@ export default function CustomerInvitations() {
                       
                       <div className="text-sm text-slate-600 space-y-1">
                         <div>
-                          <i className="fas fa-calendar mr-1"></i>
+                          <Calendar className="w-3 h-3 mr-1 inline" />
                           Sent: {formatDate(invitation.createdAt)}
                         </div>
                         <div>
-                          <i className="fas fa-clock mr-1"></i>
+                          <Clock className="w-3 h-3 mr-1 inline" />
                           Expires: {formatDate(invitation.expiresAt)}
                         </div>
                         {invitation.usedAt && (
                           <div>
-                            <i className="fas fa-check mr-1"></i>
+                            <Check className="w-3 h-3 mr-1 inline" />
                             Accepted: {formatDate(invitation.usedAt)}
                           </div>
                         )}
@@ -300,7 +300,7 @@ export default function CustomerInvitations() {
                             });
                           }}
                         >
-                          <i className="fas fa-copy mr-1"></i>
+                          <Copy className="w-3 h-3 mr-1 inline" />
                           Copy Link
                         </Button>
                       )}
@@ -313,13 +313,13 @@ export default function CustomerInvitations() {
         ) : (
           <Card>
             <CardContent className="p-8 text-center">
-              <i className="fas fa-envelope text-4xl text-slate-300 mb-4"></i>
+              <Mail className="w-12 h-12 text-slate-300 mb-4 mx-auto" />
               <h3 className="text-lg font-semibold text-slate-900 mb-2">No Invitations Sent</h3>
               <p className="text-slate-600 mb-4">
                 You haven't sent any customer invitations yet.
               </p>
               <Button onClick={() => setShowForm(true)}>
-                <i className="fas fa-plus mr-2"></i>
+                <Plus className="w-4 h-4 mr-2" />
                 Send Your First Invitation
               </Button>
             </CardContent>

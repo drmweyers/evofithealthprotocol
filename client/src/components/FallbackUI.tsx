@@ -1,6 +1,7 @@
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { Utensils, LogIn, BookOpen, Settings, Database, RefreshCw } from "lucide-react";
 
 export default function FallbackUI() {
   return (
@@ -10,7 +11,7 @@ export default function FallbackUI() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2">
-              <i className="fas fa-utensils text-primary text-2xl"></i>
+              <Utensils className="w-8 h-8 text-primary" />
               <span className="text-xl font-bold text-slate-800">FitMeal Pro</span>
             </div>
             <div className="flex items-center space-x-4">
@@ -19,7 +20,7 @@ export default function FallbackUI() {
                 size="sm"
                 onClick={() => window.location.href = '/api/login'}
               >
-                <i className="fas fa-sign-in-alt mr-2"></i>
+                <LogIn className="w-4 h-4 mr-2" />
                 Login
               </Button>
             </div>
@@ -31,15 +32,15 @@ export default function FallbackUI() {
         <Tabs defaultValue="recipes" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-8">
             <TabsTrigger value="recipes">
-              <i className="fas fa-book-open mr-2"></i>
+              <BookOpen className="w-4 h-4 mr-2" />
               Browse Recipes
             </TabsTrigger>
             <TabsTrigger value="meal-plan">
-              <i className="fas fa-utensils mr-2"></i>
+              <Utensils className="w-4 h-4 mr-2" />
               Meal Plan Generator
             </TabsTrigger>
             <TabsTrigger value="admin">
-              <i className="fas fa-cog mr-2"></i>
+              <Settings className="w-4 h-4 mr-2" />
               Admin
             </TabsTrigger>
           </TabsList>
@@ -47,11 +48,11 @@ export default function FallbackUI() {
           <TabsContent value="recipes">
             <Card className="text-center py-12">
               <CardContent>
-                <i className="fas fa-database text-4xl text-slate-300 mb-4"></i>
+                <Database className="w-12 h-12 text-slate-300 mb-4 mx-auto" />
                 <h3 className="text-lg font-semibold text-slate-900 mb-2">Database Connection Issue</h3>
                 <p className="text-slate-600 mb-4">Unable to connect to database. Please try again in a moment.</p>
                 <Button onClick={() => window.location.reload()}>
-                  <i className="fas fa-refresh mr-2"></i>
+                  <RefreshCw className="w-4 h-4 mr-2" />
                   Retry
                 </Button>
               </CardContent>
@@ -61,11 +62,11 @@ export default function FallbackUI() {
           <TabsContent value="meal-plan">
             <Card className="text-center py-12">
               <CardContent>
-                <i className="fas fa-utensils text-4xl text-slate-300 mb-4"></i>
+                <Utensils className="w-12 h-12 text-slate-300 mb-4 mx-auto" />
                 <h3 className="text-lg font-semibold text-slate-900 mb-2">Meal Plan Generator</h3>
                 <p className="text-slate-600 mb-4">Database connection required to generate meal plans.</p>
                 <Button onClick={() => window.location.reload()}>
-                  <i className="fas fa-refresh mr-2"></i>
+                  <RefreshCw className="w-4 h-4 mr-2" />
                   Retry Connection
                 </Button>
               </CardContent>
@@ -75,11 +76,11 @@ export default function FallbackUI() {
           <TabsContent value="admin">
             <Card className="text-center py-12">
               <CardContent>
-                <i className="fas fa-cog text-4xl text-slate-300 mb-4"></i>
+                <Settings className="w-12 h-12 text-slate-300 mb-4 mx-auto" />
                 <h3 className="text-lg font-semibold text-slate-900 mb-2">Admin Panel</h3>
                 <p className="text-slate-600 mb-4">Admin features require database connectivity.</p>
                 <Button onClick={() => window.location.reload()}>
-                  <i className="fas fa-refresh mr-2"></i>
+                  <RefreshCw className="w-4 h-4 mr-2" />
                   Retry Connection
                 </Button>
               </CardContent>

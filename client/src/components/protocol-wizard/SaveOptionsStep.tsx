@@ -68,18 +68,33 @@ export default function SaveOptionsStep({
   const [templateDescription, setTemplateDescription] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Fetch customers if not provided
+  // Only fetch customers when the "Assign to Customer" option is selected
+  // This prevents unnecessary API calls and 403 errors for admin users
   const { data: customers, isLoading: loadingCustomers } = useQuery({
     queryKey: ['trainer-customers'],
     queryFn: async () => {
-      const response = await fetch('/api/trainer/customers', {
+      const endpoint = userRole === 'admin' 
+        ? '/api/admin/customers'  // Admin endpoint (if it exists)
+        : '/api/trainer/customers'; // Trainer endpoint
+        
+      const response = await fetch(endpoint, {
         credentials: 'include',
       });
-      if (!response.ok) throw new Error('Failed to fetch customers');
+      
+      if (!response.ok) {
+        // Don't throw error for 403, just return empty array
+        if (response.status === 403) {
+          console.warn('User does not have permission to fetch customers');
+          return [];
+        }
+        throw new Error('Failed to fetch customers');
+      }
+      
       const data = await response.json();
       return data || [];
     },
-    enabled: availableCustomers.length === 0 && userRole === 'trainer',
+    // Only fetch when "assign" option is selected and no customers provided
+    enabled: selectedOption === 'assign' && availableCustomers.length === 0,
   });
 
   const customerList = availableCustomers.length > 0 ? availableCustomers : (customers || []);

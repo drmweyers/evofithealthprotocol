@@ -12,9 +12,10 @@ import AdminTable from "../components/AdminTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import CacheDebugger from "../components/CacheDebugger";
 import SpecializedProtocolsPanel from "../components/SpecializedProtocolsPanel";
-import { ResponsiveLayout } from "../components/ResponsiveLayout";
-import { useResponsive } from "../hooks/useResponsive";
-import { MobileCard, MobileCardContent, MobileCardHeader, MobileCardTitle } from "../components/ui/mobile-card";
+import { 
+  LogOut, Dna, Users, User, Clock, Bug, UserCheck, AlertTriangle,
+  Trash2, Download, Copy, UserCog, Heart, BarChart, FileDown, TrendingUp
+} from "lucide-react";
 
 export default function Admin() {
   const { toast } = useToast();
@@ -23,12 +24,10 @@ export default function Admin() {
   const queryClient = useQueryClient();
   const cacheManager = createCacheManager(queryClient);
   const [activeTab, setActiveTab] = useState("health-protocols");
-  const { isMobile, isTablet } = useResponsive();
 
   // WORKAROUND: Redirect admin users to protocols page for enhanced protocol wizard access
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      console.log('🔄 ADMIN REDIRECT: Redirecting admin user to /protocols for enhanced wizard access');
       navigate('/protocols', { replace: true });
     }
   }, [isAuthenticated, authLoading, navigate]);
@@ -170,8 +169,7 @@ export default function Admin() {
   }
 
   return (
-    <ResponsiveLayout>
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
       <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 sm:gap-6">
         <div className="min-w-0 flex-1">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 mb-2 truncate">
@@ -182,7 +180,7 @@ export default function Admin() {
           </p>
         </div>
         <Button onClick={logout} variant="destructive" className="flex-shrink-0 text-sm sm:text-base">
-          <i className="fas fa-sign-out-alt mr-2"></i>
+          <LogOut className="w-4 h-4 mr-2" />
           <span className="hidden sm:inline">Logout</span>
           <span className="sm:hidden">Exit</span>
         </Button>
@@ -191,17 +189,17 @@ export default function Admin() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mb-6 sm:mb-8">
         <TabsList className="grid w-full grid-cols-3 h-auto p-1">
           <TabsTrigger value="health-protocols" className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 p-2 sm:p-3 text-xs sm:text-sm">
-            <i className="fas fa-dna text-sm sm:text-base"></i>
+            <Dna className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="hidden sm:inline">Health Protocols</span>
             <span className="sm:hidden">Protocols</span>
           </TabsTrigger>
           <TabsTrigger value="customer-management" className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 p-2 sm:p-3 text-xs sm:text-sm">
-            <i className="fas fa-users text-sm sm:text-base"></i>
+            <Users className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="hidden sm:inline">User Management</span>
             <span className="sm:hidden">Users</span>
           </TabsTrigger>
           <TabsTrigger value="user-profile" className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 p-2 sm:p-3 text-xs sm:text-sm">
-            <i className="fas fa-user text-sm sm:text-base"></i>
+            <User className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="hidden sm:inline">Profile</span>
             <span className="sm:hidden">Profile</span>
           </TabsTrigger>
@@ -222,7 +220,7 @@ export default function Admin() {
                         <p className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900">{healthProtocolsData?.total || 0}</p>
                       </div>
                       <div className="p-2 sm:p-3 bg-purple-100 rounded-full flex-shrink-0 ml-2">
-                        <i className="fas fa-dna text-purple-600 text-sm sm:text-lg lg:text-xl"></i>
+                        <Dna className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-purple-600" />
                       </div>
                     </div>
                   </CardContent>
@@ -238,7 +236,7 @@ export default function Admin() {
                         </p>
                       </div>
                       <div className="p-2 sm:p-3 bg-blue-100 rounded-full flex-shrink-0 ml-2">
-                        <i className="fas fa-clock text-blue-600 text-sm sm:text-lg lg:text-xl"></i>
+                        <Clock className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-blue-600" />
                       </div>
                     </div>
                   </CardContent>
@@ -254,7 +252,7 @@ export default function Admin() {
                         </p>
                       </div>
                       <div className="p-2 sm:p-3 bg-orange-100 rounded-full flex-shrink-0 ml-2">
-                        <i className="fas fa-bug text-orange-600 text-sm sm:text-lg lg:text-xl"></i>
+                        <Bug className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-orange-600" />
                       </div>
                     </div>
                   </CardContent>
@@ -268,7 +266,7 @@ export default function Admin() {
                         <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">{stats.protocolAssignments || 0}</p>
                       </div>
                       <div className="p-2 sm:p-3 bg-green-100 rounded-full flex-shrink-0 ml-2">
-                        <i className="fas fa-user-check text-green-600 text-sm sm:text-lg lg:text-xl"></i>
+                        <UserCheck className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-green-600" />
                       </div>
                     </div>
                   </CardContent>
@@ -280,7 +278,7 @@ export default function Admin() {
             <div className="space-y-6">
               <div className="flex items-center space-x-3">
                 <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
-                  <i className="fas fa-dna text-white text-2xl"></i>
+                  <Dna className="w-8 h-8 text-white" />
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900">Health Protocol Management</h2>
@@ -290,7 +288,7 @@ export default function Admin() {
               
               <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
                 <div className="flex items-start space-x-3">
-                  <i className="fas fa-exclamation-triangle text-amber-600 text-lg mt-1"></i>
+                  <AlertTriangle className="w-5 h-5 text-amber-600 mt-1" />
                   <div>
                     <h3 className="font-semibold text-amber-800">Medical Disclaimer</h3>
                     <p className="text-amber-700 text-sm">
@@ -303,7 +301,6 @@ export default function Admin() {
 
               <SpecializedProtocolsPanel 
                 onConfigChange={(config) => {
-                  console.log('Protocol config updated:', config);
                   // Trigger protocol list refresh when protocols are generated/updated
                   if (config.longevity?.isEnabled || config.parasiteCleanse?.isEnabled || 
                       (config.clientAilments?.includeInMealPlanning && config.clientAilments?.selectedAilments?.length > 0)) {
@@ -331,7 +328,7 @@ export default function Admin() {
               ) : (healthProtocolsData?.protocols || []).length === 0 ? (
                 <Card>
                   <CardContent className="p-12 text-center">
-                    <i className="fas fa-dna text-4xl text-gray-400 mb-4"></i>
+                    <Dna className="w-12 h-12 text-gray-400 mb-4 mx-auto" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No Health Protocols Yet</h3>
                     <p className="text-gray-600 mb-4">
                       Use the Health Protocol Generator above to create your first protocol.
@@ -353,12 +350,12 @@ export default function Admin() {
                                     ? 'bg-blue-100 text-blue-800' 
                                     : 'bg-orange-100 text-orange-800'
                                 }`}>
-                                  <i className={`fas ${protocol.type === 'longevity' ? 'fa-clock' : 'fa-bug'} mr-1`}></i>
+                                  {protocol.type === 'longevity' ? <Clock className="w-3 h-3 mr-1 inline" /> : <Bug className="w-3 h-3 mr-1 inline" />}
                                   {protocol.type === 'longevity' ? 'Longevity' : 'Parasite Cleanse'}
                                 </span>
                                 {protocol.isTemplate && (
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    <i className="fas fa-copy mr-1"></i>
+                                    <Copy className="w-3 h-3 mr-1 inline" />
                                     Template
                                   </span>
                                 )}
@@ -391,7 +388,7 @@ export default function Admin() {
                                 disabled={deleteProtocolMutation.isPending}
                                 className="text-red-600 hover:text-red-700"
                               >
-                                <i className="fas fa-trash mr-1"></i>
+                                <Trash2 className="w-4 h-4 mr-1 inline" />
                                 Delete
                               </Button>
                               <Button
@@ -400,7 +397,7 @@ export default function Admin() {
                                 onClick={handleExportClick}
                                 className="text-blue-600 hover:text-blue-700"
                               >
-                                <i className="fas fa-download mr-1"></i>
+                                <Download className="w-4 h-4 mr-1 inline" />
                                 Export
                               </Button>
                             </div>
@@ -419,7 +416,7 @@ export default function Admin() {
           <div className="space-y-6">
             <div className="flex items-center space-x-3">
               <div className="p-3 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg">
-                <i className="fas fa-users text-white text-2xl"></i>
+                <Users className="w-8 h-8 text-white" />
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-slate-900">User Management</h2>
@@ -438,7 +435,7 @@ export default function Admin() {
                         <p className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900">{stats.totalUsers || 0}</p>
                       </div>
                       <div className="p-2 sm:p-3 bg-blue-100 rounded-full flex-shrink-0 ml-2">
-                        <i className="fas fa-users text-blue-600 text-sm sm:text-lg lg:text-xl"></i>
+                        <Users className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-blue-600" />
                       </div>
                     </div>
                   </CardContent>
@@ -452,7 +449,7 @@ export default function Admin() {
                         <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">{stats.totalTrainers || 0}</p>
                       </div>
                       <div className="p-2 sm:p-3 bg-green-100 rounded-full flex-shrink-0 ml-2">
-                        <i className="fas fa-user-tie text-green-600 text-sm sm:text-lg lg:text-xl"></i>
+                        <UserCog className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-green-600" />
                       </div>
                     </div>
                   </CardContent>
@@ -466,7 +463,7 @@ export default function Admin() {
                         <p className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-600">{stats.totalCustomers || 0}</p>
                       </div>
                       <div className="p-2 sm:p-3 bg-purple-100 rounded-full flex-shrink-0 ml-2">
-                        <i className="fas fa-user text-purple-600 text-sm sm:text-lg lg:text-xl"></i>
+                        <User className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-purple-600" />
                       </div>
                     </div>
                   </CardContent>
@@ -480,7 +477,7 @@ export default function Admin() {
                         <p className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-600">{stats.protocolAssignments || 0}</p>
                       </div>
                       <div className="p-2 sm:p-3 bg-orange-100 rounded-full flex-shrink-0 ml-2">
-                        <i className="fas fa-heartbeat text-orange-600 text-sm sm:text-lg lg:text-xl"></i>
+                        <Heart className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-orange-600" />
                       </div>
                     </div>
                   </CardContent>
@@ -495,7 +492,6 @@ export default function Admin() {
                 isLoading={usersLoading}
                 onDeleteUser={(id) => {
                   // Add delete user functionality
-                  console.log('Delete user:', id);
                 }}
                 onAssignProtocol={(userId, protocolId) => {
                   assignProtocolMutation.mutate({ protocolId, customerId: userId });
@@ -509,7 +505,7 @@ export default function Admin() {
           <div className="space-y-6">
             <div className="flex items-center space-x-3">
               <div className="p-3 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg">
-                <i className="fas fa-user text-white text-2xl"></i>
+                <User className="w-8 h-8 text-white" />
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-slate-900">Admin Profile</h2>
@@ -523,7 +519,7 @@ export default function Admin() {
                 <CardContent className="p-4 sm:p-6">
                   <div className="flex items-center space-x-3 mb-4">
                     <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
-                      <i className="fas fa-download text-blue-600 text-lg sm:text-xl"></i>
+                      <Download className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                     </div>
                     <h3 className="text-base sm:text-lg font-semibold text-slate-900">Export Data</h3>
                   </div>
@@ -535,7 +531,7 @@ export default function Admin() {
                     disabled={(healthProtocolsData?.protocols || []).length === 0}
                   >
                     <span className="flex items-center justify-center">
-                      <i className="fas fa-file-download mr-2"></i>
+                      <FileDown className="w-4 h-4 mr-2" />
                       Export Protocols
                     </span>
                   </Button>
@@ -546,7 +542,7 @@ export default function Admin() {
                 <CardContent className="p-4 sm:p-6">
                   <div className="flex items-center space-x-3 mb-4">
                     <div className="p-2 bg-purple-100 rounded-lg flex-shrink-0">
-                      <i className="fas fa-chart-bar text-purple-600 text-lg sm:text-xl"></i>
+                      <BarChart className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
                     </div>
                     <h3 className="text-base sm:text-lg font-semibold text-slate-900">System Stats</h3>
                   </div>
@@ -562,7 +558,7 @@ export default function Admin() {
                     }}
                   >
                     <span className="flex items-center justify-center">
-                      <i className="fas fa-analytics mr-2"></i>
+                      <TrendingUp className="w-4 h-4 mr-2" />
                       View Analytics
                     </span>
                   </Button>
@@ -573,7 +569,7 @@ export default function Admin() {
                 <CardContent className="p-4 sm:p-6">
                   <div className="flex items-center space-x-3 mb-4">
                     <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
-                      <i className="fas fa-sign-out-alt text-red-600 text-lg sm:text-xl"></i>
+                      <LogOut className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
                     </div>
                     <h3 className="text-base sm:text-lg font-semibold text-slate-900">Account</h3>
                   </div>
@@ -584,7 +580,7 @@ export default function Admin() {
                     onClick={logout}
                   >
                     <span className="flex items-center justify-center">
-                      <i className="fas fa-sign-out-alt mr-2"></i>
+                      <LogOut className="w-4 h-4 mr-2" />
                       Logout
                     </span>
                   </Button>
@@ -596,6 +592,5 @@ export default function Admin() {
       </Tabs>
       
     </div>
-    </ResponsiveLayout>
   );
 }

@@ -1,15 +1,16 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "../components/ui/card";
+import { Button } from "../components/ui/button";
 import { useAuth } from "../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import CustomerManagement from "../components/CustomerManagement";
 import { ResponsiveHeader } from "../components/ResponsiveHeader";
-import { ResponsiveLayout } from "../components/ResponsiveLayout";
-import { useResponsive } from "../hooks/useResponsive";
+import { FileText, Users, Dumbbell, Heart, Trophy } from "lucide-react";
 
 export default function Trainer() {
   const { user } = useAuth();
-  const { isMobile, isTablet } = useResponsive();
+  const navigate = useNavigate();
 
   const { data: stats } = useQuery({
     queryKey: ['trainerStats'],
@@ -23,10 +24,8 @@ export default function Trainer() {
   });
 
   return (
-    <ResponsiveLayout>
-      {!isMobile && !isTablet && (
-        <ResponsiveHeader title="Trainer Dashboard" showAdminButton={false} />
-      )}
+    <div className="min-h-screen bg-gray-50">
+      <ResponsiveHeader title="Trainer Dashboard" showAdminButton={false} />
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         {/* Header Section */}
@@ -50,7 +49,7 @@ export default function Trainer() {
                   <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">{stats.totalCustomers || 0}</p>
                 </div>
                 <div className="p-2 sm:p-3 bg-green-100 rounded-full flex-shrink-0 ml-2">
-                  <i className="fas fa-users text-green-600 text-sm sm:text-lg lg:text-xl"></i>
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-green-600" />
                 </div>
               </div>
             </CardContent>
@@ -64,7 +63,7 @@ export default function Trainer() {
                   <p className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-600">{stats.activePrograms || 0}</p>
                 </div>
                 <div className="p-2 sm:p-3 bg-purple-100 rounded-full flex-shrink-0 ml-2">
-                  <i className="fas fa-dumbbell text-purple-600 text-sm sm:text-lg lg:text-xl"></i>
+                  <Dumbbell className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-purple-600" />
                 </div>
               </div>
             </CardContent>
@@ -78,7 +77,7 @@ export default function Trainer() {
                   <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">{stats.clientSatisfaction || '95%'}</p>
                 </div>
                 <div className="p-2 sm:p-3 bg-blue-100 rounded-full flex-shrink-0 ml-2">
-                  <i className="fas fa-heart text-blue-600 text-sm sm:text-lg lg:text-xl"></i>
+                  <Heart className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-blue-600" />
                 </div>
               </div>
             </CardContent>
@@ -92,7 +91,7 @@ export default function Trainer() {
                   <p className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-600">{stats.completedPrograms || 0}</p>
                 </div>
                 <div className="p-2 sm:p-3 bg-orange-100 rounded-full flex-shrink-0 ml-2">
-                  <i className="fas fa-trophy text-orange-600 text-sm sm:text-lg lg:text-xl"></i>
+                  <Trophy className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-orange-600" />
                 </div>
               </div>
             </CardContent>
@@ -100,20 +99,42 @@ export default function Trainer() {
         </div>
       )}
 
-        {/* Customer Management Section */}
-        <div className="space-y-4 sm:space-y-6">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-green-500 to-blue-600 rounded-xl shadow-lg">
-              <i className="fas fa-users text-white text-lg sm:text-2xl"></i>
+        {/* Quick Actions Section */}
+        <div className="space-y-6 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
+              <FileText className="text-white text-2xl" />
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900">Customer Management</h2>
-              <p className="text-sm sm:text-base text-slate-600">Manage your clients and track their fitness progress</p>
+              <h2 className="text-2xl font-bold text-slate-900">Health Protocols</h2>
+              <p className="text-slate-600">Create and manage specialized health protocols for your clients</p>
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <Button
+              onClick={() => navigate('/protocols')}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Health Protocols
+            </Button>
+          </div>
+        </div>
+
+        {/* Customer Management Section */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-green-500 to-blue-600 rounded-xl shadow-lg">
+              <Users className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">Customer Management</h2>
+              <p className="text-slate-600">Manage your clients and track their fitness progress</p>
             </div>
           </div>
           <CustomerManagement />
         </div>
       </div>
-    </ResponsiveLayout>
+    </div>
   );
 } 

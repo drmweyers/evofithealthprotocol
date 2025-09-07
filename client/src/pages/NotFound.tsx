@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { Button } from "../components/ui/button";
+import { Home } from "lucide-react";
 
 export default function NotFound() {
   return (
@@ -11,7 +12,7 @@ export default function NotFound() {
       </p>
       <Button asChild>
         <Link href="/">
-          <i className="fas fa-home mr-2"></i>
+          <Home className="w-4 h-4 mr-2" />
           Return Home
         </Link>
       </Button>

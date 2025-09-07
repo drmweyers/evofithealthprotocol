@@ -3,6 +3,7 @@ import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
 import { Card, CardContent } from "./ui/card";
 import type { User } from "@shared/schema";
+import { Users, User, Plus, X } from "lucide-react";
 
 interface AdminTableProps {
   users: User[];
@@ -62,7 +63,7 @@ export default function AdminTable({
   if (users.length === 0) {
     return (
       <div className="p-8 sm:p-12 text-center">
-        <i className="fas fa-users text-3xl sm:text-4xl text-slate-300 mb-4"></i>
+        <Users className="w-12 h-12 text-slate-300 mb-4 mx-auto" />
         <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-2">No users found</h3>
         <p className="text-sm sm:text-base text-slate-600">No users match the current filters.</p>
       </div>
@@ -118,7 +119,7 @@ export default function AdminTable({
                       alt={user.email}
                     />
                   ) : (
-                    <i className="fas fa-user text-slate-400 text-xl"></i>
+                    <User className="w-8 h-8 text-slate-400" />
                   )}
                 </div>
 
@@ -157,7 +158,7 @@ export default function AdminTable({
                       onClick={() => onAssignProtocol(user.id, '')}
                       className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs"
                     >
-                      <i className="fas fa-plus mr-1"></i>
+                      <Plus className="w-3 h-3 mr-1 inline" />
                       Assign Protocol
                     </Button>
                     <Button
@@ -166,7 +167,7 @@ export default function AdminTable({
                       onClick={() => onDeleteUser(user.id)}
                       className="text-red-600 border-red-200 hover:bg-red-50 text-xs"
                     >
-                      <i className="fas fa-times mr-1"></i>
+                      <X className="w-3 h-3 mr-1 inline" />
                       Delete
                     </Button>
                   </div>
@@ -231,7 +232,7 @@ export default function AdminTable({
                           alt={user.email}
                         />
                       ) : (
-                        <i className="fas fa-user text-slate-400"></i>
+                        <User className="w-6 h-6 text-slate-400" />
                       )}
                     </div>
                     <div>
@@ -268,7 +269,7 @@ export default function AdminTable({
                       onClick={() => onAssignProtocol(user.id, '')}
                       className="text-blue-600 border-blue-200 hover:bg-blue-50"
                     >
-                      <i className="fas fa-plus mr-1"></i>
+                      <Plus className="w-3 h-3 mr-1 inline" />
                       Assign Protocol
                     </Button>
                     <Button
@@ -277,7 +278,7 @@ export default function AdminTable({
                       onClick={() => onDeleteUser(user.id)}
                       className="text-red-600 border-red-200 hover:bg-red-50"
                     >
-                      <i className="fas fa-times mr-1"></i>
+                      <X className="w-3 h-3 mr-1 inline" />
                       Delete
                     </Button>
                   </div>

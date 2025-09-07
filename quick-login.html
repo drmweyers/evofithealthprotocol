@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Login - EvoFit Health Protocol</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .login-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .login-btn:hover {
+            background: #45a049;
+        }
+        .admin { background: #2196F3; }
+        .admin:hover { background: #1976D2; }
+        .trainer { background: #FF9800; }
+        .trainer:hover { background: #F57C00; }
+        .customer { background: #9C27B0; }
+        .customer:hover { background: #7B1FA2; }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            margin-top: 20px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            color: #1565C0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Quick Login - EvoFit Health Protocol</h1>
+        
+        <div class="info">
+            <strong>Select an account to login:</strong><br>
+            These are the test accounts for development.
+        </div>
+
+        <button class="login-btn admin" onclick="login('admin')">
+            👤 Login as Admin<br>
+            <small>admin@fitmeal.pro</small>
+        </button>
+
+        <button class="login-btn trainer" onclick="login('trainer')">
+            🏋️ Login as Trainer<br>
+            <small>trainer.test@evofitmeals.com</small>
+        </button>
+
+        <button class="login-btn customer" onclick="login('customer')">
+            🙋 Login as Customer<br>
+            <small>customer.test@evofitmeals.com</small>
+        </button>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        const accounts = {
+            admin: {
+                email: 'admin@fitmeal.pro',
+                password: 'AdminPass123'
+            },
+            trainer: {
+                email: 'trainer.test@evofitmeals.com',
+                password: 'TestTrainer123!'
+            },
+            customer: {
+                email: 'customer.test@evofitmeals.com',
+                password: 'TestCustomer123!'
+            }
+        };
+
+        async function login(role) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status';
+            statusDiv.innerHTML = `Logging in as ${role}...`;
+
+            try {
+                const response = await fetch('http://localhost:3500/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(accounts[role]),
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.token) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    statusDiv.className = 'status success';
+                    statusDiv.innerHTML = `
+                        ✅ Login successful!<br>
+                        👤 Logged in as: ${data.user.email}<br>
+                        🔑 Role: ${data.user.role}<br>
+                        🔄 Redirecting to protocols page...
+                    `;
+                    
+                    setTimeout(() => {
+                        window.location.href = 'http://localhost:3500/protocols';
+                    }, 2000);
+                } else {
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = `❌ Login failed: ${data.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = `❌ Network error: ${error.message}<br>
+                    Make sure the server is running on port 3500`;
+            }
+        }
+
+        // Check if server is accessible on page load
+        fetch('http://localhost:3500/api/health')
+            .then(res => {
+                if (!res.ok) {
+                    document.getElementById('status').style.display = 'block';
+                    document.getElementById('status').className = 'status error';
+                    document.getElementById('status').innerHTML = '⚠️ Server may not be running. Run: npm run dev';
+                }
+            })
+            .catch(() => {
+                document.getElementById('status').style.display = 'block';
+                document.getElementById('status').className = 'status error';
+                document.getElementById('status').innerHTML = '⚠️ Cannot connect to server. Make sure Docker is running and run: npm run dev';
+            });
+    </script>
+</body>
+</html>

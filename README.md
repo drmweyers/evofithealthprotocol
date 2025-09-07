@@ -14,12 +14,29 @@ Optimize healthspan and lifespan through evidence-based interventions:
 - **Mitochondrial Support** - Enhance energy production at the cellular level
 - **Hormetic Stressors** - Build resilience through controlled stress exposure
 
-### 🦠 **Parasite Cleanse Protocol**
-Comprehensive three-phase anti-parasitic intervention:
-- **Phase 1: Preparation** - Prime the digestive system and disrupt biofilms
-- **Phase 2: Active Cleanse** - Deploy herbal anti-parasitics (Black Walnut, Wormwood, Clove)
-- **Phase 3: Restoration** - Rebuild gut health and strengthen immunity
-- **Safety Monitoring** - Manage die-off reactions and maintain balance
+### 🦠 **Enhanced Parasite Cleanse Protocols** ⭐ NEW
+Revolutionary evidence-based anti-parasitic system with 22 specialized protocols:
+
+#### **Traditional Protocols**
+- **Classic Triple Herb** - Black Walnut, Wormwood, Cloves (time-tested Western approach)
+- **Garlic-Based Cleanse** - High-allicin protocols with digestive support
+- **Pumpkin Seed Protocol** - Gentle antiparasitic with nutritional benefits
+
+#### **Ayurvedic Protocols**  
+- **Comprehensive Ayurvedic** - Vidanga, Neem, Kutki, Kalmegh (gentle 3-phase approach)
+- **Triphala-Based Cleanse** - Three-fruit detoxification with elimination support
+- **Neem Intensive** - Powerful broad-spectrum antimicrobial protocol
+
+#### **Modern Integrative Protocols**
+- **Clinical Evidence-Based** - Berberine, Oregano Oil, GSE (research-backed)
+- **Artemisinin Protocol** - WHO-approved antimalarial compounds
+- **Biofilm Disruption** - NAC and enzymes with targeted antiparasitics
+
+#### **Smart Features**
+- **AI-Powered Matching** - Algorithms recommend optimal protocols based on specific ailments
+- **Safety Validation** - Automatic contraindication screening and drug interaction checking
+- **Regional Availability** - Protocols filtered by geographic herb accessibility  
+- **Evidence Classification** - WHO-approved, clinical studies, traditional use ratings
 
 ### 🎯 **AI-Powered Health Protocol Generation**
 Create personalized protocols based on:

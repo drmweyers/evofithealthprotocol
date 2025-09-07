@@ -1,166 +1,146 @@
-# 🔐 OFFICIAL TEST CREDENTIALS - DO NOT CHANGE
+# Test Credentials - EvoFit Health Protocol
 
-## ⚠️ CRITICAL: These are the ONLY credentials to use in ALL environments
+## ⚠️ IMPORTANT: These are the ONLY test credentials for Dev and Production
 
-These credentials are hardcoded in the database seed and MUST be used consistently across:
-- Development Environment
-- Testing Environment  
-- Staging Environment
-- Production Demo Accounts
-- All Playwright Tests
-- All Documentation
+These credentials should NEVER be changed. They are standardized across all environments.
 
----
-
-## Standard Test Accounts
-
-| Role | Email | Password | Purpose |
-|------|-------|----------|---------|
-| **Admin** | `admin@fitmeal.pro` | `AdminPass123` | Full system administration |
-| **Trainer** | `trainer.test@evofitmeals.com` | `TestTrainer123!` | Trainer features testing |
-| **Customer** | `customer.test@evofitmeals.com` | `TestCustomer123!` | Customer features testing |
-
----
-
-## ⛔ DO NOT:
-- ❌ Change these passwords
-- ❌ Delete these accounts
-- ❌ Modify the email addresses
-- ❌ Use different credentials in different files
-- ❌ Create variations of these credentials
-
-## ✅ DO:
-- ✅ Use these exact credentials in all test files
-- ✅ Reference this file when writing tests
-- ✅ Copy-paste to avoid typos
-- ✅ Update all test files if credentials ever change (with team approval)
-
----
-
-## Quick Copy Commands
-
-### For JavaScript/TypeScript Test Files:
-```javascript
-const TEST_CREDENTIALS = {
-  admin: {
-    email: 'admin@fitmeal.pro',
-    password: 'AdminPass123'
-  },
-  trainer: {
-    email: 'trainer.test@evofitmeals.com',
-    password: 'TestTrainer123!'
-  },
-  customer: {
-    email: 'customer.test@evofitmeals.com',
-    password: 'TestCustomer123!'
-  }
-};
+## Admin Account
+```
+Email: admin@fitmeal.pro
+Password: AdminPass123
 ```
 
-### For API Testing (curl):
+## Trainer Account
+```
+Email: trainer.test@evofitmeals.com
+Password: TestTrainer123!
+```
+
+## Customer Account
+```
+Email: customer.test@evofitmeals.com
+Password: TestCustomer123!
+```
+
+## Usage Notes
+
+### Development Environment
+- URL: http://localhost:3500
+- These accounts are pre-seeded in the database
+- Use for all testing and development
+
+### Production Environment
+- These same accounts should exist in production
+- Use for testing and verification
+
+### Quick Login via Console
+
+```javascript
+// Admin Login
+fetch('/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'admin@fitmeal.pro',
+    password: 'AdminPass123'
+  }),
+  credentials: 'include'
+}).then(r => r.json()).then(d => {
+  localStorage.setItem('token', d.token);
+  location.reload();
+});
+
+// Trainer Login
+fetch('/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'trainer.test@evofitmeals.com',
+    password: 'TestTrainer123!'
+  }),
+  credentials: 'include'
+}).then(r => r.json()).then(d => {
+  localStorage.setItem('token', d.token);
+  location.reload();
+});
+
+// Customer Login
+fetch('/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'customer.test@evofitmeals.com',
+    password: 'TestCustomer123!'
+  }),
+  credentials: 'include'
+}).then(r => r.json()).then(d => {
+  localStorage.setItem('token', d.token);
+  location.reload();
+});
+```
+
+## API Testing
+
+### Get Auth Token (for API testing tools like Postman)
+
 ```bash
-# Admin Login
-curl -X POST http://localhost:3501/api/auth/login \
+# Admin token
+curl -X POST http://localhost:3500/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@fitmeal.pro","password":"AdminPass123"}'
 
-# Trainer Login
-curl -X POST http://localhost:3501/api/auth/login \
+# Trainer token
+curl -X POST http://localhost:3500/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"trainer.test@evofitmeals.com","password":"TestTrainer123!"}'
 
-# Customer Login
-curl -X POST http://localhost:3501/api/auth/login \
+# Customer token
+curl -X POST http://localhost:3500/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"customer.test@evofitmeals.com","password":"TestCustomer123!"}'
 ```
 
-### For Manual Testing:
-1. Go to http://localhost:3501
-2. Copy the exact email and password from the table above
-3. Paste without modification
+## Roles and Permissions
 
----
+### Admin
+- Full system access
+- Can manage all users
+- Can create/edit/delete all protocols
+- Can view all customer data
+- Can access admin dashboard
 
-## Database Verification
+### Trainer
+- Can create and manage health protocols
+- Can assign protocols to their customers
+- Can view their assigned customers
+- Can track customer progress
+- Cannot access admin features
 
-These accounts are created by the database seed script. To verify they exist:
+### Customer
+- Can view assigned protocols
+- Can track their own progress
+- Can upload progress photos
+- Can view their measurements
+- Cannot create or edit protocols
 
-```sql
-SELECT email, role FROM users WHERE email IN (
-  'admin@fitmeal.pro',
-  'trainer.test@evofitmeals.com',
-  'customer.test@evofitmeals.com'
-);
-```
+## Important Notes
 
-Expected result: 3 rows with correct roles.
+1. **DO NOT CHANGE** these credentials in any environment
+2. **DO NOT DELETE** these accounts from the database
+3. **DO NOT MODIFY** the roles or permissions
+4. These accounts are used for:
+   - Automated testing
+   - Manual QA testing
+   - Development testing
+   - Production verification
+5. If these accounts are missing, run the seed script to recreate them
 
----
+## Troubleshooting
 
-## Playwright Test Integration
+If login fails:
+1. Check if the dev server is running: `npm run dev`
+2. Check Docker is running: `docker ps`
+3. Check database connection: `docker logs evofithealthprotocol-postgres`
+4. Re-seed the database if needed: `npm run seed`
 
-All Playwright tests MUST use these credentials:
-
-```javascript
-import { TEST_CREDENTIALS } from './TEST_CREDENTIALS.js';
-
-// Or define inline (copy exactly):
-const TEST_CREDENTIALS = {
-  admin: {
-    email: 'admin@fitmeal.pro',
-    password: 'AdminPass123'
-  },
-  trainer: {
-    email: 'trainer.test@evofitmeals.com',
-    password: 'TestTrainer123!'
-  },
-  customer: {
-    email: 'customer.test@evofitmeals.com',
-    password: 'TestCustomer123!'
-  }
-};
-```
-
----
-
-## UI Display
-
-When showing test credentials in the login page UI, display EXACTLY:
-
-```html
-<div class="test-credentials">
-  <h3>Test Accounts</h3>
-  <p><strong>Admin:</strong> admin@fitmeal.pro / AdminPass123</p>
-  <p><strong>Trainer:</strong> trainer.test@evofitmeals.com / TestTrainer123!</p>
-  <p><strong>Customer:</strong> customer.test@evofitmeals.com / TestCustomer123!</p>
-</div>
-```
-
----
-
-## Enforcement
-
-- **Code Reviews**: Reject any PR that uses different test credentials
-- **CI/CD**: Test pipelines use only these credentials
-- **Documentation**: All docs must reference this file for credentials
-- **Onboarding**: New developers must be directed to this file
-
----
-
-## Last Updated
-- **Date**: September 5, 2025
-- **Version**: 1.0.0 (FINAL)
-- **Status**: ✅ PERMANENT - DO NOT MODIFY
-
----
-
-## Contact
-If you believe these credentials need to be changed, you must:
-1. Get approval from the tech lead
-2. Update ALL occurrences across the entire codebase
-3. Update this file
-4. Notify the entire team
-5. Update all test environments
-
-**Remember: Consistency is critical for testing reliability!**
+Last Updated: 2025-09-07

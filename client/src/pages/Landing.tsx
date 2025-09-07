@@ -1,5 +1,6 @@
 import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
+import { Dna, Rocket, Microscope, Heart, Activity } from 'lucide-react';
 
 export default function Landing() {
   return (
@@ -9,7 +10,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-12 sm:py-16 md:py-20 lg:py-24">
           <div className="text-center">
             <div className="flex items-center justify-center space-x-2 mb-4 sm:mb-6">
-              <i className="fas fa-dna text-2xl sm:text-3xl lg:text-4xl"></i>
+              <Dna className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12" />
               <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold">
                 EvoFit Health Protocol
               </h1>
@@ -26,7 +27,7 @@ export default function Landing() {
               className="bg-white text-blue-600 hover:bg-white/90 text-sm sm:text-base lg:text-lg px-6 sm:px-8 py-3 sm:py-4 h-auto font-medium shadow-lg hover:shadow-xl transition-all duration-200"
               onClick={() => window.location.href = '/login'}
             >
-              <i className="fas fa-rocket mr-2"></i>
+              <Rocket className="w-5 h-5 mr-2" />
               <span className="hidden sm:inline">Start Your Health Journey</span>
               <span className="sm:hidden">Start Journey</span>
             </Button>
@@ -50,7 +51,7 @@ export default function Landing() {
             <Card className="text-center p-4 sm:p-6 lg:p-8 hover:shadow-lg transition-all duration-200 border-0 shadow-md">
               <CardContent className="p-0">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
-                  <i className="fas fa-dna text-blue-600 text-lg sm:text-xl lg:text-2xl"></i>
+                  <Dna className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-blue-600" />
                 </div>
                 <h3 className="text-lg sm:text-xl font-semibold text-slate-900 mb-3 sm:mb-4">
                   Personalized Protocols
@@ -64,7 +65,7 @@ export default function Landing() {
             <Card className="text-center p-4 sm:p-6 lg:p-8 hover:shadow-lg transition-all duration-200 border-0 shadow-md">
               <CardContent className="p-0">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
-                  <i className="fas fa-microscope text-purple-600 text-lg sm:text-xl lg:text-2xl"></i>
+                  <Microscope className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-purple-600" />
                 </div>
                 <h3 className="text-lg sm:text-xl font-semibold text-slate-900 mb-3 sm:mb-4">
                   Science-Based Approach
@@ -78,7 +79,7 @@ export default function Landing() {
             <Card className="text-center p-4 sm:p-6 lg:p-8 hover:shadow-lg transition-all duration-200 border-0 shadow-md md:col-span-3 lg:col-span-1">
               <CardContent className="p-0">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
-                  <i className="fas fa-heartbeat text-green-600 text-lg sm:text-xl lg:text-2xl"></i>
+                  <Heart className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-green-600" />
                 </div>
                 <h3 className="text-lg sm:text-xl font-semibold text-slate-900 mb-3 sm:mb-4">
                   Progress Tracking
@@ -138,7 +139,7 @@ export default function Landing() {
             className="bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base lg:text-lg px-6 sm:px-8 py-3 sm:py-4 h-auto font-medium shadow-lg hover:shadow-xl transition-all duration-200"
             onClick={() => window.location.href = '/api/login'}
           >
-            <i className="fas fa-heartbeat mr-2"></i>
+            <Activity className="w-5 h-5 mr-2" />
             <span className="hidden sm:inline">Begin Your Health Transformation</span>
             <span className="sm:hidden">Start Health Journey</span>
           </Button>

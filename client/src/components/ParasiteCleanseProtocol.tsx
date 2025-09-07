@@ -1,11 +1,18 @@
 /**
- * Parasite Cleanse Protocol Component
+ * Enhanced Parasite Cleanse Protocol Component
  * 
- * This component provides controls for configuring and monitoring parasite cleanse
- * protocols with different durations, intensities, and dietary approaches.
+ * This component provides comprehensive parasite cleanse protocol selection and configuration
+ * with evidence-based protocols, ailment-specific targeting, and detailed herb information.
+ * 
+ * Features:
+ * - 20+ evidence-based protocols from traditional, Ayurvedic, and modern sources
+ * - Ailment-specific protocol recommendations
+ * - Detailed herb information with dosages and contraindications
+ * - Regional availability checking
+ * - Safety monitoring and medical disclaimers
  */
 
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -69,7 +76,18 @@ import type {
   ParasiteCleanseFormData,
 } from '../types/specializedProtocols';
 
-// Validation schema
+// Import comprehensive protocols database
+import {
+  PARASITE_CLEANSE_PROTOCOLS,
+  getRecommendedProtocols,
+  getProtocolsByIntensity,
+  getProtocolsByType,
+  getProtocolsForRegion,
+  AILMENT_TO_PROTOCOL_MAPPING,
+  type ParasiteCleanseProtocol,
+} from '../data/parasiteCleanseProtocols';
+
+// Enhanced validation schema
 const parasiteCleanseSchema = z.object({
   duration: z.union([z.literal(7), z.literal(14), z.literal(30), z.literal(60), z.literal(90)]),
   intensity: z.enum(['gentle', 'moderate', 'intensive']),
@@ -80,7 +98,14 @@ const parasiteCleanseSchema = z.object({
   probioticFoods: z.array(z.string()),
   fiberRichFoods: z.array(z.string()),
   excludeFoods: z.array(z.string()),
-}) satisfies z.ZodType<ParasiteCleanseFormData>;
+  selectedProtocol: z.string().optional(),
+  targetAilments: z.array(z.string()).optional(),
+  userRegion: z.enum(['northAmerica', 'europe', 'asia', 'latinAmerica', 'africa']).optional(),
+}) satisfies z.ZodType<ParasiteCleanseFormData & {
+  selectedProtocol?: string;
+  targetAilments?: string[];
+  userRegion?: 'northAmerica' | 'europe' | 'asia' | 'latinAmerica' | 'africa';
+}>;
 
 // Configuration constants
 const CLEANSE_DURATIONS: { value: CleanseDuration; label: string; description: string; recommendation: string }[] = [
@@ -204,6 +229,33 @@ const ParasiteCleanseProtocol: React.FC<ParasiteCleanseProtocolProps> = ({
   disabled = false,
   onPhaseChange,
 }) => {
+  // Enhanced state management
+  const [selectedProtocol, setSelectedProtocol] = useState<ParasiteCleanseProtocol | null>(null);
+  const [showProtocolDetails, setShowProtocolDetails] = useState(false);
+  const [targetAilments, setTargetAilments] = useState<string[]>([]);
+  const [userRegion, setUserRegion] = useState<'northAmerica' | 'europe' | 'asia' | 'latinAmerica' | 'africa'>('northAmerica');
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  // Computed values using comprehensive protocols database
+  const availableProtocols = useMemo(() => {
+    return getProtocolsForRegion(userRegion).filter(protocol => 
+      protocol.intensity === config.intensity || !config.isEnabled
+    );
+  }, [userRegion, config.intensity, config.isEnabled]);
+
+  const recommendedProtocols = useMemo(() => {
+    if (targetAilments.length === 0) return [];
+    return getRecommendedProtocols(targetAilments);
+  }, [targetAilments]);
+
+  const protocolsByType = useMemo(() => {
+    return {
+      traditional: getProtocolsByType('traditional').filter(p => availableProtocols.includes(p)),
+      ayurvedic: getProtocolsByType('ayurvedic').filter(p => availableProtocols.includes(p)),
+      modern: getProtocolsByType('modern').filter(p => availableProtocols.includes(p)),
+      combination: getProtocolsByType('combination').filter(p => availableProtocols.includes(p))
+    };
+  }, [availableProtocols]);
+
   const form = useForm<ParasiteCleanseFormData>({
     resolver: zodResolver(parasiteCleanseSchema),
     defaultValues: {
@@ -216,8 +268,29 @@ const ParasiteCleanseProtocol: React.FC<ParasiteCleanseProtocolProps> = ({
       probioticFoods: config.targetFoods.probiotics,
       fiberRichFoods: config.targetFoods.fiberRich,
       excludeFoods: config.targetFoods.excludeFoods,
+      selectedProtocol: selectedProtocol?.id || '',
+      targetAilments,
+      userRegion,
     },
   });
+
+  // Protocol selection handler
+  const handleProtocolSelection = (protocolId: string) => {
+    const protocol = PARASITE_CLEANSE_PROTOCOLS.find(p => p.id === protocolId);
+    if (protocol) {
+      setSelectedProtocol(protocol);
+      // Update form values based on selected protocol
+      form.setValue('duration', protocol.duration.recommended as CleanseDuration);
+      form.setValue('intensity', protocol.intensity);
+      
+      // Auto-configure based on protocol
+      const herbsIncluded = protocol.herbs.filter(h => h.priority === 'primary').length > 0;
+      form.setValue('includeHerbalSupplements', herbsIncluded);
+      form.setValue('dietOnlyCleanse', !herbsIncluded);
+      
+      setShowProtocolDetails(true);
+    }
+  };
 
   const handleToggleCleanse = (enabled: boolean) => {
     onChange({
@@ -319,6 +392,234 @@ const ParasiteCleanseProtocol: React.FC<ParasiteCleanseProtocolProps> = ({
                 are pregnant, or are taking medications.
               </AlertDescription>
             </Alert>
+
+            {/* Enhanced Protocol Selection Section */}
+            <div className="mb-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium">🧬 Evidence-Based Protocol Selection</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowRecommendations(!showRecommendations)}
+                  className="flex items-center gap-2"
+                >
+                  <TrendingUp className="w-4 h-4" />
+                  {showRecommendations ? 'Hide' : 'Show'} Recommendations
+                </Button>
+              </div>
+              
+              {/* Region Selection */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm">Your Region (for herb availability)</Label>
+                  <Select value={userRegion} onValueChange={(value) => setUserRegion(value as typeof userRegion)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="northAmerica">🇺🇸 North America</SelectItem>
+                      <SelectItem value="europe">🇪🇺 Europe</SelectItem>
+                      <SelectItem value="asia">🌏 Asia</SelectItem>
+                      <SelectItem value="latinAmerica">🌎 Latin America</SelectItem>
+                      <SelectItem value="africa">🌍 Africa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="text-sm">Available Protocols: {availableProtocols.length}</Label>
+                  <div className="text-xs text-muted-foreground">
+                    Filtered by region and intensity
+                  </div>
+                </div>
+              </div>
+
+              {/* Recommended Protocols */}
+              {showRecommendations && recommendedProtocols.length > 0 && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium text-green-600">✨ Recommended for Your Conditions</Label>
+                  <div className="space-y-2">
+                    {recommendedProtocols.slice(0, 3).map(({ protocol, matchScore, reasoning }) => (
+                      <div
+                        key={protocol.id}
+                        className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => handleProtocolSelection(protocol.id)}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium">{protocol.name}</span>
+                          <Badge variant="secondary">{matchScore}% match</Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground mb-1">{protocol.description}</div>
+                        <div className="text-xs text-blue-600">{reasoning}</div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge variant="outline" className="text-xs">
+                            {protocol.type}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {protocol.duration.recommended} days
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {protocol.intensity}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Protocol Categories */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">🏛️ Browse by Protocol Type</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Traditional Protocols */}
+                  {protocolsByType.traditional.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-amber-600">Traditional Herbal</Label>
+                      {protocolsByType.traditional.slice(0, 2).map((protocol) => (
+                        <Button
+                          key={protocol.id}
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start text-xs"
+                          onClick={() => handleProtocolSelection(protocol.id)}
+                        >
+                          <Leaf className="w-3 h-3 mr-2" />
+                          {protocol.name}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Ayurvedic Protocols */}
+                  {protocolsByType.ayurvedic.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-purple-600">Ayurvedic</Label>
+                      {protocolsByType.ayurvedic.slice(0, 2).map((protocol) => (
+                        <Button
+                          key={protocol.id}
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start text-xs"
+                          onClick={() => handleProtocolSelection(protocol.id)}
+                        >
+                          <Heart className="w-3 h-3 mr-2" />
+                          {protocol.name}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Modern Protocols */}
+                  {protocolsByType.modern.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-blue-600">Modern Clinical</Label>
+                      {protocolsByType.modern.slice(0, 2).map((protocol) => (
+                        <Button
+                          key={protocol.id}
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start text-xs"
+                          onClick={() => handleProtocolSelection(protocol.id)}
+                        >
+                          <Zap className="w-3 h-3 mr-2" />
+                          {protocol.name}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Combination Protocols */}
+                  {protocolsByType.combination.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-green-600">Gentle/Combination</Label>
+                      {protocolsByType.combination.slice(0, 2).map((protocol) => (
+                        <Button
+                          key={protocol.id}
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start text-xs"
+                          onClick={() => handleProtocolSelection(protocol.id)}
+                        >
+                          <RefreshCw className="w-3 h-3 mr-2" />
+                          {protocol.name}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Selected Protocol Details */}
+            {selectedProtocol && showProtocolDetails && (
+              <div className="mb-6 p-4 border rounded-lg bg-muted/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default">{selectedProtocol.type}</Badge>
+                    <Badge variant="outline">{selectedProtocol.evidenceLevel}</Badge>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowProtocolDetails(false)}
+                  >
+                    ✕
+                  </Button>
+                </div>
+                
+                <h4 className="font-semibold mb-2">{selectedProtocol.name}</h4>
+                <p className="text-sm text-muted-foreground mb-3">{selectedProtocol.description}</p>
+                
+                {/* Protocol phases */}
+                <div className="space-y-2 mb-3">
+                  <Label className="text-xs font-medium">Protocol Phases:</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {selectedProtocol.phases.map((phase, index) => (
+                      <div key={index} className="p-2 bg-background rounded border text-xs">
+                        <div className="font-medium">{phase.name} ({phase.duration} days)</div>
+                        <div className="text-muted-foreground">{phase.description}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Key herbs */}
+                {selectedProtocol.herbs.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    <Label className="text-xs font-medium">Primary Herbs:</Label>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedProtocol.herbs
+                        .filter(h => h.priority === 'primary')
+                        .map((herb, index) => (
+                          <TooltipWrapper
+                            key={index}
+                            content={`${herb.latinName} - ${herb.mechanism}. Dosage: ${herb.dosage.amount} ${herb.dosage.frequency}`}
+                          >
+                            <Badge variant="secondary" className="text-xs cursor-help">
+                              {herb.name}
+                            </Badge>
+                          </TooltipWrapper>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Contraindications warning */}
+                {selectedProtocol.contraindications.length > 0 && (
+                  <Alert className="mt-3">
+                    <Shield className="h-3 w-3" />
+                    <AlertTitle className="text-sm">Contraindications</AlertTitle>
+                    <AlertDescription className="text-xs">
+                      {selectedProtocol.contraindications.slice(0, 3).join(', ')}
+                      {selectedProtocol.contraindications.length > 3 && '...'}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+
+            <Separator className="mb-6" />
 
             {/* Progress Tracking (if active) */}
             {config.startDate && (

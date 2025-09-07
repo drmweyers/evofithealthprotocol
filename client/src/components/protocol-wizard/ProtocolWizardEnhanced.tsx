@@ -79,6 +79,8 @@ import {
   hasErrors,
   sanitizeProtocolFormData 
 } from '../../utils/sanitization';
+import ClientAilmentsSelector from '../ClientAilmentsSelector';
+import ParasiteCleanseProtocol from '../ParasiteCleanseProtocol';
 
 // Types
 interface ProtocolTemplate {
@@ -175,21 +177,48 @@ export default function ProtocolWizardEnhanced({
   onComplete, 
   onCancel 
 }: ProtocolWizardEnhancedProps) {
+  // CRITICAL DEBUG LOGGING - DO NOT REMOVE
+  console.error('🚨🚨🚨 PROTOCOL WIZARD ENHANCED - MOUNTING');
+  console.error('🚨 Props received:', { 
+    onComplete: typeof onComplete, 
+    onCancel: typeof onCancel,
+    hasOnComplete: !!onComplete,
+    hasOnCancel: !!onCancel 
+  });
+  console.error('🚨 Component mounting at:', new Date().toISOString());
+  console.error('🚨 Window location:', window.location.href);
+  
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
+  
+  console.error('🚨 User context:', { 
+    userId: user?.id, 
+    userRole: user?.role, 
+    userEmail: user?.email,
+    isAuthenticated: !!user 
+  });
   
   // Get dynamic wizard steps based on user role
   const WIZARD_STEPS = getWizardSteps(user?.role);
   const isAdmin = user?.role === 'admin';
   const startingStep = 1; // Everyone starts at 1 (Template Selection)
   
+  console.error('🚨 Wizard configuration:', {
+    steps: WIZARD_STEPS,
+    isAdmin,
+    startingStep
+  });
+  
   const [wizardData, setWizardData] = useState<WizardData>({
     step: 1,
     customizations: {
       goals: [],
       conditions: [],
+      selectedAilments: [],
+      parasiteCleanseOptions: {},
+      includesParasiteCleanse: false,
       medications: [],
       allergies: [],
       preferences: [],
@@ -204,19 +233,11 @@ export default function ProtocolWizardEnhanced({
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [formErrors, setFormErrors] = useState<any>({});
   
-  // Fetch clients - Available for assignment in save options step
-  const { data: clients, isLoading: loadingClients } = useQuery({
-    queryKey: ['trainer-clients'],
-    queryFn: async () => {
-      const response = await fetch('/api/trainer/customers', {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch clients');
-      const data = await response.json();
-      return data || [];
-    },
-    enabled: user?.role === 'trainer', // Enable for trainers to have customers available for assignment
-  });
+  // NOTE: Clients are now fetched ONLY in SaveOptionsStep when needed
+  // This prevents 403 errors for admin users and delays the fetch until actually needed
+  // The SaveOptionsStep component will handle fetching customers when the user chooses to assign
+  const clients = [];
+  const loadingClients = false;
   
   // Fetch protocol templates
   const { data: templates, isLoading: loadingTemplates } = useQuery({
@@ -412,26 +433,38 @@ export default function ProtocolWizardEnhanced({
     if (isAdmin) {
       // Admin validation logic (7 steps)
       // Step 1: Template selection validation
-      if (wizardData.step === 1 && !wizardData.template) {
-        toast({
-          title: 'Selection Required',
-          description: 'Please select a protocol template before proceeding.',
-          variant: 'destructive',
-        });
+      if (wizardData.step === 1) {
+        if (!wizardData.template) {
+          toast({
+            title: 'Selection Required',
+            description: 'Please select a protocol template before proceeding.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        // If validation passes, advance to next step
+        setWizardData(prev => ({ ...prev, step: prev.step + 1 }));
         return;
       }
       
       // Step 2: Health information validation
       if (wizardData.step === 2) {
-        if (wizardData.customizations.conditions.length === 0 && 
-            wizardData.customizations.medications.length === 0) {
+        const hasAilments = wizardData.customizations.selectedAilments && wizardData.customizations.selectedAilments.length > 0;
+        const hasConditions = wizardData.customizations.conditions && wizardData.customizations.conditions.length > 0;
+        const hasMedications = wizardData.customizations.medications && wizardData.customizations.medications.length > 0;
+        const hasParasiteCleanse = wizardData.customizations.includesParasiteCleanse;
+        
+        if (!hasAilments && !hasConditions && !hasMedications && !hasParasiteCleanse) {
           toast({
             title: 'Information Required',
-            description: 'Please provide at least some health information.',
+            description: 'Please select at least one health concern or provide medical information.',
             variant: 'destructive',
           });
           return;
         }
+        // If validation passes, advance to next step
+        setWizardData(prev => ({ ...prev, step: prev.step + 1 }));
+        return;
       }
       
       // Step 3: Customization validation
@@ -444,40 +477,60 @@ export default function ProtocolWizardEnhanced({
           });
           return;
         }
+        // If validation passes, advance to next step
+        setWizardData(prev => ({ ...prev, step: prev.step + 1 }));
+        return;
       }
     } else {
       // Trainer validation logic (8 steps)
       // Step 1: Client selection validation
-      if (wizardData.step === 1 && !wizardData.client) {
-        toast({
-          title: 'Client Required',
-          description: 'Please select a client before proceeding.',
-          variant: 'destructive',
-        });
+      if (wizardData.step === 1) {
+        if (!wizardData.client) {
+          toast({
+            title: 'Client Required',
+            description: 'Please select a client before proceeding.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        // If validation passes, advance to next step
+        setWizardData(prev => ({ ...prev, step: prev.step + 1 }));
         return;
       }
       
       // Step 2: Template selection validation  
-      if (wizardData.step === 2 && !wizardData.template) {
-        toast({
-          title: 'Selection Required',
-          description: 'Please select a protocol template before proceeding.',
-          variant: 'destructive',
-        });
+      if (wizardData.step === 2) {
+        if (!wizardData.template) {
+          toast({
+            title: 'Selection Required',
+            description: 'Please select a protocol template before proceeding.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        // If validation passes, advance to next step
+        setWizardData(prev => ({ ...prev, step: prev.step + 1 }));
         return;
       }
       
       // Step 3: Health information validation
       if (wizardData.step === 3) {
-        if (wizardData.customizations.conditions.length === 0 && 
-            wizardData.customizations.medications.length === 0) {
+        const hasAilments = wizardData.customizations.selectedAilments && wizardData.customizations.selectedAilments.length > 0;
+        const hasConditions = wizardData.customizations.conditions && wizardData.customizations.conditions.length > 0;
+        const hasMedications = wizardData.customizations.medications && wizardData.customizations.medications.length > 0;
+        const hasParasiteCleanse = wizardData.customizations.includesParasiteCleanse;
+        
+        if (!hasAilments && !hasConditions && !hasMedications && !hasParasiteCleanse) {
           toast({
             title: 'Information Required',
-            description: 'Please provide at least some health information.',
+            description: 'Please select at least one health concern or provide medical information.',
             variant: 'destructive',
           });
           return;
         }
+        // If validation passes, advance to next step
+        setWizardData(prev => ({ ...prev, step: prev.step + 1 }));
+        return;
       }
       
       // Step 4: Customization validation
@@ -490,6 +543,9 @@ export default function ProtocolWizardEnhanced({
           });
           return;
         }
+        // If validation passes, advance to next step
+        setWizardData(prev => ({ ...prev, step: prev.step + 1 }));
+        return;
       }
     }
     
@@ -586,15 +642,503 @@ export default function ProtocolWizardEnhanced({
     }
   };
   
-  const renderStepContent = () => {
-    // Debug logging for step rendering
-    console.log('🔍 renderStepContent - Debug:', {
-      isAdmin,
-      userRole: user?.role,
-      currentStep: wizardData.step,
-      stepPath: isAdmin ? 'admin' : 'trainer'
-    });
+  // Step Components
+  const ClientSelectionStep = ({ clients, selected, onSelect }: any) => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Select Client</CardTitle>
+        <CardDescription>Choose the client for whom you're creating this protocol</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ScrollArea className="h-[400px]">
+          <div className="space-y-2">
+            {clients.map((client: any) => (
+              <div
+                key={client.id}
+                className={cn(
+                  "cursor-pointer p-4 border rounded-lg transition-colors",
+                  selected?.id === client.id ? "border-primary bg-primary/5" : "border-gray-200 hover:border-primary/50"
+                )}
+                onClick={() => onSelect(client)}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-medium">{client.name}</h3>
+                    <p className="text-sm text-muted-foreground">{client.email}</p>
+                  </div>
+                  {selected?.id === client.id && <Check className="h-5 w-5 text-primary" />}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
+
+  const TemplateSelectionStep = ({ templates, selected, onSelect }: any) => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Choose Protocol Template</CardTitle>
+        <CardDescription>Select a starting template for your protocol</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {templates.map((template: any) => (
+            <div
+              key={template.id}
+              className={cn(
+                "cursor-pointer p-4 border rounded-lg transition-colors",
+                selected?.id === template.id ? "border-primary bg-primary/5" : "border-gray-200 hover:border-primary/50"
+              )}
+              onClick={() => onSelect(template)}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-medium">{template.name}</h3>
+                {selected?.id === template.id && <Check className="h-5 w-5 text-primary" />}
+              </div>
+              <p className="text-sm text-muted-foreground mb-2">{template.description}</p>
+              <div className="flex gap-2">
+                {template.tags.map((tag: string) => (
+                  <Badge key={tag} variant="secondary">{tag}</Badge>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const HealthInformationStep = ({ data, onChange }: any) => {
+    const [newMedication, setNewMedication] = useState('');
+    const [newAllergy, setNewAllergy] = useState('');
+    const [showParasiteCleanse, setShowParasiteCleanse] = useState(data.includesParasiteCleanse || false);
     
+    // Ensure data structure is initialized
+    React.useEffect(() => {
+      if (!data.selectedAilments || !data.conditions || !data.medications || !data.allergies) {
+        onChange({
+          ...data,
+          selectedAilments: data.selectedAilments || [],
+          conditions: data.conditions || [],
+          medications: data.medications || [],
+          allergies: data.allergies || []
+        });
+      }
+    }, []);
+    
+    const addItem = (type: string, value: string) => {
+      const trimmed = value.trim();
+      if (trimmed) {
+        onChange({
+          ...data,
+          [type]: [...(data[type] || []), trimmed]
+        });
+      }
+    };
+    
+    const removeItem = (type: string, index: number) => {
+      onChange({
+        ...data,
+        [type]: data[type].filter((_: any, i: number) => i !== index)
+      });
+    };
+    
+    const handleAilmentSelection = (ailmentIds: string[]) => {
+      // Preserve ALL existing data properties when updating ailments
+      onChange({
+        goals: data.goals || [],
+        conditions: data.conditions || [],
+        medications: data.medications || [],
+        allergies: data.allergies || [],
+        preferences: data.preferences || [],
+        intensity: data.intensity || 'moderate',
+        duration: data.duration || 30,
+        frequency: data.frequency || 3,
+        ...data,  // Spread existing data
+        selectedAilments: ailmentIds  // Update only selectedAilments
+      });
+    };
+    
+    const handleParasiteCleanseUpdate = (options: any) => {
+      // Preserve ALL existing data properties when updating parasite cleanse
+      onChange({
+        goals: data.goals || [],
+        conditions: data.conditions || [],
+        medications: data.medications || [],
+        allergies: data.allergies || [],
+        preferences: data.preferences || [],
+        intensity: data.intensity || 'moderate',
+        duration: data.duration || 30,
+        frequency: data.frequency || 3,
+        ...data,  // Spread existing data
+        parasiteCleanseOptions: options,
+        includesParasiteCleanse: true
+      });
+    };
+    
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Health Information</CardTitle>
+          <CardDescription>Provide relevant health information for protocol customization</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Medical Conditions */}
+          <div>
+            <Label>Medical Conditions</Label>
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              {['Diabetes', 'Hypertension', 'Heart Disease', 'Asthma', 'Arthritis', 'Thyroid Disorder'].map((condition) => (
+                <div key={condition} className="flex items-center space-x-2">
+                  <Checkbox 
+                    id={`condition-${condition}`}
+                    checked={data.conditions?.includes(condition)}
+                    onCheckedChange={(checked) => {
+                      const newConditions = checked 
+                        ? [...(data.conditions || []), condition]
+                        : (data.conditions || []).filter((c: string) => c !== condition);
+                      onChange({ ...data, conditions: newConditions });
+                    }}
+                  />
+                  <Label 
+                    htmlFor={`condition-${condition}`}
+                    className="cursor-pointer"
+                  >
+                    {condition}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Health Concerns & Ailments */}
+          <div>
+            <Label className="text-lg font-semibold mb-4 block">Select Your Health Concerns</Label>
+            <p className="text-sm text-muted-foreground mb-4">
+              Choose from common health concerns including digestive issues, pain conditions, inflammation, fatigue, and more.
+            </p>
+            <ClientAilmentsSelector
+              selectedAilments={data.selectedAilments || []}
+              onSelectionChange={handleAilmentSelection}
+              maxSelections={15}
+              showNutritionalSummary={true}
+              showCategoryCount={true}
+            />
+          </div>
+
+          {/* Parasite Cleanse */}
+          <div>
+            <Label>Include Parasite Cleanse Protocol?</Label>
+            <div className="flex items-center space-x-2 mt-2">
+              <Checkbox 
+                id="parasite-cleanse"
+                checked={data.includesParasiteCleanse || false}
+                onCheckedChange={(checked) => {
+                  setShowParasiteCleanse(checked);
+                  onChange({ ...data, includesParasiteCleanse: checked });
+                }}
+              />
+              <Label 
+                htmlFor="parasite-cleanse"
+                className="cursor-pointer"
+              >
+                Yes, include parasite cleanse options
+              </Label>
+            </div>
+            {showParasiteCleanse && data.includesParasiteCleanse && (
+              <Card className="mt-4 p-4 bg-orange-50 border-orange-200">
+                <ParasiteCleanseProtocol
+                  onProtocolGenerate={handleParasiteCleanseUpdate}
+                  isEmbedded={true}
+                />
+              </Card>
+            )}
+          </div>
+
+          {/* Current Medications */}
+          <div>
+            <Label>Current Medications</Label>
+            <p className="text-sm text-muted-foreground mb-2">
+              List any medications you're currently taking
+            </p>
+            <div className="flex gap-2 mt-2">
+              <Input
+                value={newMedication}
+                onChange={(e) => setNewMedication(e.target.value)}
+                placeholder="e.g., Metformin, Lisinopril"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    addItem('medications', newMedication);
+                    setNewMedication('');
+                  }
+                }}
+              />
+              <Button
+                variant="outline"
+                onClick={() => {
+                  addItem('medications', newMedication);
+                  setNewMedication('');
+                }}
+              >
+                Add
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {(data.medications || []).map((medication: string, index: number) => (
+                <Badge key={index} variant="secondary">
+                  {medication}
+                  <button
+                    onClick={() => removeItem('medications', index)}
+                    className="ml-2 hover:text-destructive"
+                  >
+                    <XCircle className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* Allergies */}
+          <div>
+            <Label>Allergies & Sensitivities</Label>
+            <p className="text-sm text-muted-foreground mb-2">
+              Include food allergies, drug allergies, and environmental sensitivities
+            </p>
+            <div className="flex gap-2 mt-2">
+              <Input
+                value={newAllergy}
+                onChange={(e) => setNewAllergy(e.target.value)}
+                placeholder="e.g., Latex, Penicillin, Peanuts"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    addItem('allergies', newAllergy);
+                    setNewAllergy('');
+                  }
+                }}
+              />
+              <Button
+                variant="outline"
+                onClick={() => {
+                  addItem('allergies', newAllergy);
+                  setNewAllergy('');
+                }}
+              >
+                Add
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {(data.allergies || []).map((allergy: string, index: number) => (
+                <Badge key={index} variant="destructive">
+                  {allergy}
+                  <button
+                    onClick={() => removeItem('allergies', index)}
+                    className="ml-2 hover:text-background"
+                  >
+                    <XCircle className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const CustomizationStep = ({ data, onChange }: any) => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Protocol Customization</CardTitle>
+        <CardDescription>Customize the protocol based on specific goals and preferences</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div>
+          <Label>Health Goals</Label>
+          <div className="grid grid-cols-2 gap-3 mt-2">
+            {['Weight Loss', 'Muscle Gain', 'Energy Boost', 'Better Sleep', 'Stress Management', 'Immune Support'].map((goal) => (
+              <div key={goal} className="flex items-center space-x-2">
+                <Checkbox 
+                  id={`goal-${goal}`}
+                  checked={data.goals?.includes(goal)}
+                  onCheckedChange={(checked) => {
+                    const newGoals = checked 
+                      ? [...(data.goals || []), goal]
+                      : (data.goals || []).filter((g: string) => g !== goal);
+                    onChange({ ...data, goals: newGoals });
+                  }}
+                />
+                <Label 
+                  htmlFor={`goal-${goal}`}
+                  className="cursor-pointer"
+                >
+                  {goal}
+                </Label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <Label>Protocol Intensity</Label>
+          <RadioGroup value={data.intensity} onValueChange={(value) => onChange({ ...data, intensity: value })}>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="light" id="light" />
+              <Label htmlFor="light">Light - Gentle approach</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="moderate" id="moderate" />
+              <Label htmlFor="moderate">Moderate - Balanced approach</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="intensive" id="intensive" />
+              <Label htmlFor="intensive">Intensive - Maximum results</Label>
+            </div>
+          </RadioGroup>
+        </div>
+
+        <div>
+          <Label htmlFor="duration">Protocol Duration (days)</Label>
+          <Input
+            id="duration"
+            type="number"
+            min="7"
+            max="90"
+            value={data.duration}
+            onChange={(e) => onChange({ ...data, duration: parseInt(e.target.value) })}
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="frequency">Session Frequency (per week)</Label>
+          <Input
+            id="frequency"
+            type="number"
+            min="1"
+            max="7"
+            value={data.frequency}
+            onChange={(e) => onChange({ ...data, frequency: parseInt(e.target.value) })}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const AIGenerationStep = ({ isGenerating, template, customizations }: any) => (
+    <Card>
+      <CardHeader>
+        <CardTitle>AI Protocol Generation</CardTitle>
+        <CardDescription>Generating your personalized protocol using AI</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {isGenerating ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <RefreshCw className="h-8 w-8 animate-spin text-primary mb-4" />
+              <p className="text-lg font-medium">Generating Protocol...</p>
+              <p className="text-sm text-muted-foreground">This may take a few moments</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <Alert>
+                <Sparkles className="h-4 w-4" />
+                <AlertTitle>Ready to Generate</AlertTitle>
+                <AlertDescription>
+                  Click "Next" to generate your personalized protocol based on:
+                  <ul className="mt-2 list-disc list-inside">
+                    <li>Template: {template?.name || 'None selected'}</li>
+                    <li>Goals: {customizations.goals?.join(', ') || 'None specified'}</li>
+                    <li>Conditions: {customizations.conditions?.join(', ') || 'None specified'}</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const SafetyValidationStep = ({ validation, protocol }: any) => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Safety Validation</CardTitle>
+        <CardDescription>Reviewing protocol for safety and contraindications</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {validation ? (
+          <div className="space-y-4">
+            <Alert className={validation.safetyRating === 'safe' ? 'border-green-500' : 'border-yellow-500'}>
+              <Shield className="h-4 w-4" />
+              <AlertTitle>Safety Rating: {validation.safetyRating}</AlertTitle>
+              <AlertDescription>
+                Risk Level: {validation.riskLevel}/10
+              </AlertDescription>
+            </Alert>
+            
+            {validation.warnings?.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2">Warnings</h4>
+                <ul className="list-disc list-inside space-y-1">
+                  {validation.warnings.map((warning: string, idx: number) => (
+                    <li key={idx} className="text-sm text-yellow-600">{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {validation.recommendations?.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2">Recommendations</h4>
+                <ul className="list-disc list-inside space-y-1">
+                  {validation.recommendations.map((rec: string, idx: number) => (
+                    <li key={idx} className="text-sm">{rec}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">Validating protocol safety...</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const ReviewFinalizeStep = ({ wizardData, onNotesChange }: any) => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Review & Finalize</CardTitle>
+        <CardDescription>Review your protocol before saving</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <h4 className="font-medium mb-2">Protocol Summary</h4>
+          <div className="space-y-2 text-sm">
+            <div><strong>Template:</strong> {wizardData.template?.name || 'Custom'}</div>
+            <div><strong>Client:</strong> {wizardData.client?.name || 'Not specified'}</div>
+            <div><strong>Goals:</strong> {wizardData.customizations.goals?.join(', ') || 'None'}</div>
+            <div><strong>Duration:</strong> {wizardData.customizations.duration} days</div>
+            <div><strong>Intensity:</strong> {wizardData.customizations.intensity}</div>
+          </div>
+        </div>
+        
+        <div>
+          <Label htmlFor="notes">Additional Notes</Label>
+          <Textarea
+            id="notes"
+            placeholder="Add any additional notes or instructions..."
+            value={wizardData.notes || ''}
+            onChange={(e) => onNotesChange(e.target.value)}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const renderStepContent = () => {
     // For admin users: 7-step workflow without client selection
     if (isAdmin) {
       switch (wizardData.step) {
@@ -716,6 +1260,24 @@ export default function ProtocolWizardEnhanced({
   };
   
   return (
+    <>
+      {/* CRITICAL DEBUG INDICATOR - DO NOT REMOVE */}
+      <div style={{
+        position: 'fixed',
+        top: '10px',
+        right: '10px',
+        background: 'red',
+        color: 'white',
+        padding: '20px',
+        fontSize: '18px',
+        zIndex: 99999,
+        border: '3px solid yellow',
+        fontWeight: 'bold'
+      }}>
+        🚨 WIZARD IS RENDERING 🚨
+        <br />Step: {wizardData.step}
+        <br />User: {user?.email}
+      </div>
     <div className="container max-w-6xl mx-auto p-6">
       {/* Progress Bar */}
       <div className="mb-8">
@@ -823,6 +1385,7 @@ export default function ProtocolWizardEnhanced({
         </CardFooter>
       </Card>
     </div>
+    </>
   );
 }
 
@@ -960,162 +1523,18 @@ function TemplateSelectionStep({ templates, selected, onSelect }: any) {
   );
 }
 
-function HealthInformationStep({ data, onChange }: any) {
-  const [newCondition, setNewCondition] = useState('');
-  const [newMedication, setNewMedication] = useState('');
-  const [newAllergy, setNewAllergy] = useState('');
-  
-  const addItem = (type: string, value: string) => {
-    const sanitized = sanitizeDescription(value.trim());
-    if (sanitized) {
-      onChange({
-        ...data,
-        [type]: [...data[type], sanitized]
-      });
-    }
-  };
-  
-  const removeItem = (type: string, index: number) => {
-    onChange({
-      ...data,
-      [type]: data[type].filter((_: any, i: number) => i !== index)
-    });
-  };
-  
-  return (
-    <div className="space-y-6">
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertTitle>Medical Information</AlertTitle>
-        <AlertDescription>
-          Provide accurate health information for safety validation and personalization
-        </AlertDescription>
-      </Alert>
-      
-      {/* Health Conditions */}
-      <div>
-        <Label>Health Conditions</Label>
-        <div className="flex gap-2 mt-2">
-          <Input
-            value={newCondition}
-            onChange={(e) => setNewCondition(e.target.value)}
-            placeholder="e.g., Hypertension, Diabetes"
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                addItem('conditions', newCondition);
-                setNewCondition('');
-              }
-            }}
-          />
-          <Button
-            variant="outline"
-            onClick={() => {
-              addItem('conditions', newCondition);
-              setNewCondition('');
-            }}
-          >
-            Add
-          </Button>
-        </div>
-        <div className="flex flex-wrap gap-2 mt-2">
-          {data.conditions.map((condition: string, index: number) => (
-            <Badge key={index} variant="secondary">
-              {condition}
-              <button
-                onClick={() => removeItem('conditions', index)}
-                className="ml-2 hover:text-destructive"
-              >
-                <XCircle className="w-3 h-3" />
-              </button>
-            </Badge>
-          ))}
-        </div>
-      </div>
-      
-      {/* Current Medications */}
-      <div>
-        <Label>Current Medications</Label>
-        <div className="flex gap-2 mt-2">
-          <Input
-            value={newMedication}
-            onChange={(e) => setNewMedication(e.target.value)}
-            placeholder="e.g., Metformin, Lisinopril"
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                addItem('medications', newMedication);
-                setNewMedication('');
-              }
-            }}
-          />
-          <Button
-            variant="outline"
-            onClick={() => {
-              addItem('medications', newMedication);
-              setNewMedication('');
-            }}
-          >
-            Add
-          </Button>
-        </div>
-        <div className="flex flex-wrap gap-2 mt-2">
-          {data.medications.map((medication: string, index: number) => (
-            <Badge key={index} variant="secondary">
-              {medication}
-              <button
-                onClick={() => removeItem('medications', index)}
-                className="ml-2 hover:text-destructive"
-              >
-                <XCircle className="w-3 h-3" />
-              </button>
-            </Badge>
-          ))}
-        </div>
-      </div>
-      
-      {/* Allergies */}
-      <div>
-        <Label>Allergies & Sensitivities</Label>
-        <div className="flex gap-2 mt-2">
-          <Input
-            value={newAllergy}
-            onChange={(e) => setNewAllergy(e.target.value)}
-            placeholder="e.g., Latex, Penicillin"
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                addItem('allergies', newAllergy);
-                setNewAllergy('');
-              }
-            }}
-          />
-          <Button
-            variant="outline"
-            onClick={() => {
-              addItem('allergies', newAllergy);
-              setNewAllergy('');
-            }}
-          >
-            Add
-          </Button>
-        </div>
-        <div className="flex flex-wrap gap-2 mt-2">
-          {data.allergies.map((allergy: string, index: number) => (
-            <Badge key={index} variant="secondary">
-              {allergy}
-              <button
-                onClick={() => removeItem('allergies', index)}
-                className="ml-2 hover:text-destructive"
-              >
-                <XCircle className="w-3 h-3" />
-              </button>
-            </Badge>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+// Removed duplicate HealthInformationStep function - using the const definition above
 
 function CustomizationStep({ data, onChange }: any) {
+  // Ensure data has required properties with defaults to prevent null reference errors
+  const safeData = {
+    goals: [],
+    intensity: 'moderate',
+    duration: 30,
+    frequency: 3,
+    ...data // Spread existing data to override defaults
+  };
+  
   return (
     <div className="space-y-6">
       {/* Health Goals */}
@@ -1139,14 +1558,14 @@ function CustomizationStep({ data, onChange }: any) {
           ].map(goal => (
             <div key={goal} className="flex items-center space-x-2">
               <Checkbox
-                checked={data.goals.includes(goal)}
+                checked={safeData.goals?.includes(goal) || false}
                 onCheckedChange={(checked) => {
                   if (checked) {
-                    onChange({ ...data, goals: [...data.goals, goal] });
+                    onChange({ ...safeData, goals: [...(safeData.goals || []), goal] });
                   } else {
                     onChange({
-                      ...data,
-                      goals: data.goals.filter((g: string) => g !== goal)
+                      ...safeData,
+                      goals: (safeData.goals || []).filter((g: string) => g !== goal)
                     });
                   }
                 }}
@@ -1163,8 +1582,8 @@ function CustomizationStep({ data, onChange }: any) {
       <div>
         <Label>Protocol Intensity</Label>
         <RadioGroup
-          value={data.intensity}
-          onValueChange={(value) => onChange({ ...data, intensity: value })}
+          value={safeData.intensity}
+          onValueChange={(value) => onChange({ ...safeData, intensity: value })}
           className="mt-2"
         >
           <div className="flex items-center space-x-2">
@@ -1193,8 +1612,8 @@ function CustomizationStep({ data, onChange }: any) {
         <div>
           <Label>Duration (weeks)</Label>
           <Select
-            value={data.duration.toString()}
-            onValueChange={(value) => onChange({ ...data, duration: parseInt(value) })}
+            value={safeData.duration.toString()}
+            onValueChange={(value) => onChange({ ...safeData, duration: parseInt(value) })}
           >
             <SelectTrigger className="mt-2">
               <SelectValue />
@@ -1212,8 +1631,8 @@ function CustomizationStep({ data, onChange }: any) {
         <div>
           <Label>Frequency (days/week)</Label>
           <Select
-            value={data.frequency.toString()}
-            onValueChange={(value) => onChange({ ...data, frequency: parseInt(value) })}
+            value={safeData.frequency.toString()}
+            onValueChange={(value) => onChange({ ...safeData, frequency: parseInt(value) })}
           >
             <SelectTrigger className="mt-2">
               <SelectValue />
